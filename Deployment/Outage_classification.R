@@ -1,14 +1,11 @@
 library('SparkR')
-system('gsutil cp gs://aes-datahub-0002-curated/Outage_Restoration/Model_object/model_Ensemble_2020-05-20-21-11-20.RDS /root/')
+#system('gsutil cp gs://aes-datahub-0002-curated/Outage_Restoration/Model_object/model_Ensemble_2020-05-20-21-11-20.RDS /root/')
 library('caret')
 library('ranger')
 library('xgboost')
 library('dplyr')
 library('tidyverse')
 library('dummies')
-#library('rlist')
-#library('bigrquery')
-#library('DBI')
 sparkR.session()
 
 raw_data <- read.df(paste0("gs://aes-datahub-0002-curated/Outage_Restoration/Staging/IPL_Live_Master_Dataset.csv"), source = "csv", header="true",inferschema="true")
@@ -96,16 +93,6 @@ if(!"ICON_wind_1" %in% colnames(dummyfied2))
   dummyfied2$ICON_wind_1<-0
 }
 
-if(!"ICON_wind_1" %in% colnames(dummyfied2))
-{
-  dummyfied2$ICON_wind_1<-0
-}
-
-if(!"DOWNSTREAM_CUST_QTY" %in% colnames(dummyfied2))
-{
-  dummyfied2$DOWNSTREAM_CUST_QTY<-dummyfied2$CUST_QTY
-}
-
 if(!"LIVE_OUTAGE" %in% colnames(dummyfied2))
 {
   dummyfied2$LIVE_OUTAGE<-0
@@ -122,10 +109,7 @@ finaldata<-finaldata%>%rename(SUBSTATION_CAUSE_FLG_1=SUBSTATION_CAUSE_FLG_TRUE)
 finaldata<-finaldata%>%rename(NO_OUTAGE_CAUSE_FLG_1=NO_OUTAGE_CAUSE_FLG_TRUE)
 finaldata<-finaldata%>%rename(PRECIPINTENSITY.1=PRECIPINTENSITYMAX)
 finaldata<-finaldata%>%rename(RANK_SUBSEQUENT_OUTAGES=RANK_SUBSEQUENT_MAJ_OTG_ID)
-finaldata<-finaldata%>%rename(clusters_Cluster3=clusters_Cluster3.0)
-
-
-finaldata2<-na.omit(finaldata)
+finaldata2<-finaldata%>%rename(clusters_Cluster3=clusters_Cluster3.0)
 
 model$modelSuite$XGB$predFunc <- function(model, test, factorLabels, thresh=0.5){
     names = colnames(test)
@@ -146,9 +130,6 @@ model$modelSuite$RF$predFunc<-function(model, test, factorLabels, thresh=0.5, te
   if(!is.null(testCat))
   {
     test <- getCategoricalData(test, testCat, xSelected)$data
-    # dataset <- cbind.data.frame(reactData$dataset[,predVariable, drop = FALSE], newData$data)
-    # xSelected <- newData$x
-    # remove(newData)
   }
   pred = ranger::predictions(stats::predict(model, data.frame(test), type="response"))
   pred = pred[,make.names(factorLabels)]
@@ -163,13 +144,14 @@ model$modelSuite$RF$predFunc<-function(model, test, factorLabels, thresh=0.5, te
 
 ensemble<-model$predFunc(model$modelSuite,finaldata2,model$type,model$weights)
 finaldata2$label<-ensemble
-#result<-merge(raw_data_df,finaldata2,all.x = TRUE)
-#initialcols<-colnames(raw_data_df)
-#inputcols<-initialcols[-1]
-#output_columns<-list.append(inputcols,"label")
-#result_final<-result[,colnames(result)%in%output_columns]
 raw_data_df$label<-ensemble
-write.csv(raw_data_df,paste0("/root/ensemble_predictions.csv"),row.names=FALSE)
-output_file_dump<-paste0("gs://aes-datahub-0002-curated/Outage_Restoration/Back_up/IPL_Live_Input_Master_Dataset_",format(Sys.time(),"%Y%m%d%H%M")".csv",sep="")
-system("gsutil cp /root/ensemble*  gs://aes-datahub-0002-curated/Outage_Restoration/Staging/IPL_Live_Input_Master_Dataset.csv")
-system(pastte0(("gsutil cp /root/ensemble* ",output_file_dump,sep=""))
+
+dump_time<-format(Sys.time(),"%Y%m%d%H%M")
+write.csv(raw_data_df,paste0('/root/IPL_Input_Live_Master_Dataset',dump_time,'.csv',sep=""),row.names=FALSE)
+write.csv(raw_data_df,paste0('/root/IPL_Input_Live_Master_Dataset.csv'),row.names=FALSE)
+root_file_dump<-paste0(' /root/IPL_Input_Live_Master_Dataset',dump_time,'.csv',sep="")
+root_file<-paste0(' /root/IPL_Input_Live_Master_Dataset.csv')
+output_folder<-paste0(' gs://aes-datahub-0002-curated/Outage_Restoration/Staging/')
+output_folder_dump<-paste0(" gs://aes-datahub-0002-curated/Outage_Restoration/Back_up/",sep="")
+system(paste0("gsutil cp",root_file,output_folder,sep=" "))
+system(paste0("gsutil cp",root_file_dump,output_folder_dump,sep=" "))

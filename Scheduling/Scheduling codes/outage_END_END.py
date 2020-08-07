@@ -46,6 +46,7 @@ BQ_PROJECT="aes-analytics-0002"
 BQ_DATASET="mds_outage_restoration"
 BQ_TABLE_chvg="IPL_Live_Input_Master_Dataset"
 BQ_TABLE_final="IPL_LIVE_PREDICTIONS"
+BQ_TABLE_repo="IPL_PREDICTIONS"
 cluster_name_r = 'outage-r-cluster-0002'
 email=['musigma.bkumar.c@aes.com']
 bq_dataset_name ="mds_outage_restoration"
@@ -64,7 +65,7 @@ yesterday = datetime.datetime.combine(
 default_args = {
     'start_date': yesterday,
     'email_on_failure': True,
-    'email': 'sudheer.bandla@mu-sigma.com',
+    'email': ['musigma.bkumar.c@aes.com','ms.asingh.c@aes.com','ms.gkumar.c@aes.com','musigma.pshekar.c@aes.com'],
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': datetime.timedelta(minutes=1),
@@ -80,13 +81,8 @@ default_args = {
 with DAG(
         dag_id=JOB_NAME,
         default_args=default_args,
-        schedule_interval='@hourly'
+        schedule_interval='*/30 * * * *'
 ) as dag:
-  R_clustercode_run = BashOperator(
-    task_id='cluster_classification',
-    bash_command = "gcloud beta dataproc jobs submit spark-r    /home/airflow/gcs/data/Outage_restoration/IPL/R_scripts/cluster_classification_R.R  --cluster=outage-r-cluster-0002 --region=us-east4",
-    dag=dag
-    )
   oms_live_dataset_collation= DataProcPySparkOperator(task_id='OMS_LIVE_DATA_COLLATION',
                                   main='gs://us-east4-composer-0002-8d07c42c-bucket/data/Outage_restoration/IPL/Python_scripts/omslive_dataset_collation.py', 
                                   arguments=None, 
@@ -153,14 +149,10 @@ with DAG(
   write_csv_to_bq  = GoogleCloudStorageToBigQueryOperator(
                                                                                                 task_id='write_csv_to_bq',
                                                                                                 bucket=BUCKET,
-                                                                                                autodetect = True,
                                                                                                 skip_leading_rows=1,
-                                                                                                source_objects=["Outage_Restoration/Back_up/IPL_Live_Input_Master_Dataset.csv"],    
-                                                                                                    
-                                                                                                #schema_object="colombia/schema/dagc_table_schema.json",
+                                                                                                schema_object="Outage_Restoration/Schema/output_schema.json",
+                                                                                                source_objects=["Outage_Restoration/Staging/IPL_Input_Live_Master_Dataset.csv"],    
                                                                                                 create_disposition='CREATE_IF_NEEDED',
-																								schema_fields=None,
-                                                                                        
                                                                                                 destination_project_dataset_table=BQ_PROJECT+"."+BQ_DATASET+"."+BQ_TABLE_chvg,
                                                                                                 write_disposition='WRITE_APPEND'
                                                                                 )
@@ -174,13 +166,12 @@ with DAG(
   write_csv_to_bq2  = GoogleCloudStorageToBigQueryOperator(
                                                                                                 task_id='write_csv_to_bq2',
                                                                                                 bucket=BUCKET,
-                                                                                                autodetect = True,
+                                                                                                schema_object="Outage_Restoration/Schema/predictions_schema.json",
                                                                                                 skip_leading_rows=1,
-                                                                                                source_objects=["Outage_Restoration/Live_Data_Curation/TTR_Predictions/predictions_"+output_date+".csv"],    
+                                                                                                source_objects=["Outage_Restoration/Live_Data_Curation/TTR_Predictions/TTR_predictions_"+output_date+".csv"],    
                                                                                                 create_disposition='CREATE_IF_NEEDED',
-																								schema_fields=None,
-                                                                                                destination_project_dataset_table=BQ_PROJECT+"."+BQ_DATASET+"."+BQ_TABLE_final,
-                                                                                                write_disposition='WRITE_APPNED'
+                                                                                                destination_project_dataset_table=BQ_PROJECT+"."+BQ_DATASET+"."+BQ_TABLE_repo,
+                                                                                                write_disposition='WRITE_APPEND'
                                                                                 )
 
   write_csv_to_bq_live  = GoogleCloudStorageToBigQueryOperator(
@@ -188,9 +179,9 @@ with DAG(
                                                                                                 bucket=BUCKET,
                                                                                                 autodetect = True,
                                                                                                 skip_leading_rows=1,
-                                                                                                source_objects=["Outage_Restoration/Live_Data_Curation/TTR_Predictions/predictions_"+output_date+".csv"],    
+                                                                                                source_objects=["Outage_Restoration/Live_Data_Curation/TTR_Predictions/TTR_predictions_"+output_date+".csv"],    
                                                                                                 create_disposition='CREATE_IF_NEEDED',
-																								schema_fields=None,
+                                                                                                schema_fields=None,
                                                                                                 destination_project_dataset_table=BQ_PROJECT+"."+BQ_DATASET+"."+BQ_TABLE_final,
                                                                                                 write_disposition='WRITE_TRUNCATE'
                                                                                 )

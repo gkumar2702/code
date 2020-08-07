@@ -13,10 +13,7 @@ import operator
 import pandas as pd
 import numpy as np
 import datetime as dt
-
-from pandas.io import gbq
 from datetime import datetime
-
 from pandas.io import gbq
 from datetime import date, timedelta
 from datetime import datetime
@@ -62,7 +59,6 @@ print(unique)
 
 
 storm_profiles_location = 'gs://aes-datahub-0002-curated/Outage_Restoration/Live_Data_Curation/Storm_Profiles/'
-# storm_profiles_location = 'gs://aes-datahub-0001-curated/Outage_Restoration/Live_Data_Curation/Storm_Profiles/storm_profiles_20200622.csv'
 storm_profiles_files = [] 
 
 for i in unique:         
@@ -109,27 +105,35 @@ mapin = { 1: 'TRUE', 0: 'FALSE'}
 for i in final_list:
     df_omsds[i] = df_omsds[i].map(mapin)
 
-
+df_omsds.fillna(method='ffill',inplace=True)
 # ## **Read output dataset and filter for Predicted Flag**
 
 # In[ ]:
 
 
 try:    
-    df_pred = 'SELECT OUTAGE_ID FROM aes-analytics-0002.mds_outage_restoration.IPL_LIVE_PREDICTIONS'
+    df_pred = 'SELECT OUTAGE_ID FROM aes-analytics-0002.mds_outage_restoration.IPL_PREDICTIONS'
     df_pred = gbq.read_gbq(df_pred, project_id = "aes-analytics-0002")
-    df_pred['PREDICTED_FLG'] = 1
-    df_joined=pd.merge(df_omsds,df_pred,on=['OUTAGE_ID'],how='left')
-    df_final=df_joined[pd.isnull(df_joined['PREDICTED_FLG'])][df_omsds.columns]
+    predictions=list(df_pred['OUTAGE_ID'].unique())
+    df_omsds['OUTAGE_ID'] = df_omsds['OUTAGE_ID'].astype(str)
+    df_omsds['OUTAGE_ID']=df_omsds['OUTAGE_ID'].str.replace(' ','')
+    df_final=df_omsds[~df_omsds['OUTAGE_ID'].isin(predictions)]
+    df_final.reset_index(drop=True,inplace=True)
     
 except:
     df_final=df_omsds
+
+shape = df_final.shape[0]
+if (shape==0):
+    raise Exception('No new Outages, All outages are already predicted for')
+
 # # **Write curated dataset to Big query table**
 
 # In[ ]:
 if 'DOWNSTREAM_CUST_QTY' not in df_final:
     df_final['DOWNSTREAM_CUST_QTY']=df_final['CUST_QTY']
-    
+
+
 df_final['KVA_VAL']=df_final['DOWNSTREAM_KVA_VAL']
 
 df_final.to_gbq('mds_outage_restoration.IPL_Live_Master_Dataset', project_id = 'aes-analytics-0002',
@@ -140,7 +144,7 @@ df_final.to_gbq('mds_outage_restoration.IPL_Live_Master_Dataset', project_id = '
 # In[ ]:
 
 # Backup
-df_final.to_csv("gs://aes-datahub-0002-curated/Outage_Restoration/Historical_Data/BQ_backup/IPL_OMS_LIVE_Data.csv")
+df_final.to_csv("gs://aes-datahub-0002-curated/Outage_Restoration/Historical_Data/BQ_backup/IPL_OMS_LIVE_Data_"+datetime.today().strftime('%Y%m%d%H%M')+".csv")
 
 
 # In[ ]:

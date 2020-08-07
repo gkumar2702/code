@@ -291,6 +291,9 @@ df_numerical = df_incidentdevicelocation_.groupby(['INCIDENT_ID','STRCTUR_NO','C
                                                                                                             'INCIDENT_DEVICE_ID' : 'max', 'MAJ_OTG_ID' : 'max'})
 df_numerical.rename(columns={'DOWNSTREAM_CUST_QTY' : 'CUST_QTY'}, inplace=True)
 
+df_numerical['INCIDENT_ID']=df_numerical['INCIDENT_ID'].astype(np.int64)
+df_numerical['CIRCT_ID']=df_numerical['CIRCT_ID'].astype(np.int64)
+
 df_numerical['OUTAGE_ID'] = df_numerical.apply(lambda x:'%s%s%s%s' % (x['INCIDENT_ID'], x['STRCTUR_NO'], x['CIRCT_ID'], x['DNI_EQUIP_TYPE']),axis=1)
 
 print("****QC Check****")
@@ -342,7 +345,7 @@ def cat_city_treat(group):
 
 df_treated = df_incidentdevicelocation_[['INCIDENT_ID','STRCTUR_NO','CIRCT_ID','DNI_EQUIP_TYPE','CITY_NAM']]
 df_treated = df_treated.groupby(['INCIDENT_ID','STRCTUR_NO','CIRCT_ID','DNI_EQUIP_TYPE'], as_index = False).apply(cat_city_treat)
-
+df_treated.drop_duplicates(subset=['INCIDENT_ID','STRCTUR_NO','CIRCT_ID','DNI_EQUIP_TYPE'],ignore_index=True,inplace=True)
 
 # # **Cause, Clue, Occurn Mapping**
 
@@ -738,6 +741,7 @@ def check_level(group):
     print(len(group))
 df_ads.groupby(['INCIDENT_ID','STRCTUR_NO','CIRCT_ID','DNI_EQUIP_TYPE']).apply(check_level)
 
+df_ads.fillna(method='ffill',inplace=True)
 
 # QC checks every value should be one
 

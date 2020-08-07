@@ -21,7 +21,7 @@ from airflow.utils.trigger_rule import TriggerRule
 # ===================Variables=================================
 env = Variable.get("env")
 print(env)
-JOB_NAME = 'outage-weatherdata-pull-0002'
+JOB_NAME = 'outage-diagnostic-backend'
 PROJECT = 'aes-datahub-'+env
 COMPOSER_NAME = 'composer-'+env
 COMPOSER_BUCKET = 'us-east4-composer-0002-8d07c42c-bucket'
@@ -50,15 +50,14 @@ default_args = {
 with DAG(
         dag_id=JOB_NAME,
         default_args=default_args,
-        schedule_interval='0 4 * * *'
+        schedule_interval='0 6 * * *'
 ) as dag:
-  Darksky= DataProcPySparkOperator(task_id='DarkSky_datapull',
-    main='/home/airflow/gcs/data/Outage_restoration/IPL/Python_scripts/scheduled_weatherdatapull_new.py',
+  diagnostic= DataProcPySparkOperator(task_id='Diagnostic_Daily_Append',
+    main='/home/airflow/gcs/data/Outage_restoration/IPL/Python_scripts/diagnostic_view.py',
     arguments=None, 
     archives=None, 
     pyfiles=None, 
     files=None, 
-    #job_name='{{task.task_id}}_{{ds_nodash}}', 
     cluster_name='outage-python-cluster-0002', 
     dataproc_pyspark_properties=None, 
     dataproc_pyspark_jars=None, 
@@ -68,10 +67,5 @@ with DAG(
     job_error_states=['ERROR'], 
     dag=dag
     )
-  R_clustercode_run = BashOperator(
-    task_id='cluster_classification',
-    bash_command = "gcloud beta dataproc jobs submit spark-r    /home/airflow/gcs/data/Outage_restoration/IPL/R_scripts/cluster_classification_R.R  --cluster=outage-r-cluster-0002 --region=us-east4",
-    dag=dag
-    )
 
-Darksky >> R_clustercode_run
+diagnostic
