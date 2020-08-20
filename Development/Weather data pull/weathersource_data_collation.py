@@ -60,17 +60,18 @@ unique_dates['Date'] = unique_dates['Date'].apply(lambda x: x.strftime('%Y%m%d')
 unique = unique_dates['Date'].to_list()
 print(unique)
 
-darksky_location = 'gs://aes-datahub-0002-raw/Weather/Dark_Sky/USA/Indianapolis/'
-darkskyfiles = []
+ws_location = 'gs://aes-datahub-0002-raw/Weather/weather_source/USA/Indianapolis/'
+wsfiles = []
 
 for i in unique:
     year_month = pd.to_datetime(i).strftime('%Y-%m')
-    filename = darksky_location+year_month+'/actual_Data/darkskyweatherdaily_{}.csv'.format(i)
+    current_date= pd.to_datetime(i).strftime('%Y-%m-%d')
+    filename = ws_location+year_month+'/forecast_data/'+current_date+'/weathersource_daily_{}.csv'.format(i)
     print(filename)         
-    darkskyfiles.append(pd.read_csv(filename))
+    wsfiles.append(pd.read_csv(filename))
 
-darksky_df = pd.concat(darkskyfiles)
-darksky_df.reset_index(drop=True, inplace=True)
+ws_df = pd.concat(wsfiles)
+ws_df.reset_index(drop=True, inplace=True)
 
 
 # # **Darksky weather data cleaning**
@@ -78,15 +79,15 @@ darksky_df.reset_index(drop=True, inplace=True)
 # In[ ]:
 
 
-darksky_df=darksky_df[['Date', 'Location', 'cloudCover', 'dewPoint', 'humidity', 'icon','precipIntensity',
-                           'precipIntensityMax', 'precipType', 'pressure', 'temperatureMax', 'temperatureMin',
-                           'visibility', 'windBearing', 'windGust', 'windSpeed']]
+# ws_df=ws_df[['Date', 'Location', 'cloudCover', 'dewPoint', 'humidity', 'icon','precipIntensity',
+                           # 'precipIntensityMax', 'precipType', 'pressure', 'temperatureMax', 'temperatureMin',
+                           # 'visibility', 'windBearing', 'windGust', 'windSpeed']]
 
 
-darksky_df['Date']=pd.to_datetime(darksky_df['Date']).dt.date
-darksky_df['Location'] = 'Marker' + darksky_df['Location'].astype(str)
+ws_df['Date']=pd.to_datetime(ws_df['timestamp']).dt.date
+ws_df['Location']=ws_df['Location'].astype(str)
 
-print(darksky_df.shape)
+print(ws_df.shape)
 
 
 # # **Darksky OMS weather mapping**
@@ -95,12 +96,12 @@ print(darksky_df.shape)
 
 
 df_oms_live['Date'] = pd.to_datetime(df_oms_live['Date'],errors='coerce')
-darksky_df['Date'] = pd.to_datetime(darksky_df['Date'],errors='coerce')
+ws_df['Date'] = pd.to_datetime(ws_df['Date'],errors='coerce')
 
 print(df_oms_live.shape)
-print(darksky_df.shape)
+print(ws_df.shape)
 
-df_oms_live = pd.merge(df_oms_live, darksky_df,how='left',left_on=['Date','Marker_Location'],right_on=['Date','Location'])
+df_oms_live = pd.merge(df_oms_live, ws_df,how='left',left_on=['Date','Marker_Location'],right_on=['Date','Location'])
 df_oms_live.drop(['Date'],axis=1,inplace=True)
 print(df_oms_live.shape)
 
@@ -110,10 +111,10 @@ print(df_oms_live.shape)
 # In[ ]:
 
 
-df_oms_live.rename(columns = {'cloudCover' : 'CLOUDCOVER','dewPoint' : 'DEWPOINT','humidity' : 'HUMIDITY','icon' : 'ICON','precipIntensity' : 'PRECIPINTENSITY',
-                              'precipIntensityMax' : 'PRECIPINTENSITYMAX','precipType' : 'PRECIPTYPE','pressure' : 'PRESSURE','temperatureMax' : 'TEMPERATUREMAX',
-                              'temperatureMin' : 'TEMPERATUREMIN','visibility' : 'VISIBILITY','windBearing' : 'WINDBEARING','windGust' : 'WINDGUST',
-                              'windSpeed' : 'WINDSPEED'}, inplace=True)
+# df_oms_live.rename(columns = {'cloudCover' : 'CLOUDCOVER','dewPoint' : 'DEWPOINT','humidity' : 'HUMIDITY','icon' : 'ICON','precipIntensity' : 'PRECIPINTENSITY',
+                              # 'precipIntensityMax' : 'PRECIPINTENSITYMAX','precipType' : 'PRECIPTYPE','pressure' : 'PRESSURE','temperatureMax' : 'TEMPERATUREMAX',
+                              # 'temperatureMin' : 'TEMPERATUREMIN','visibility' : 'VISIBILITY','windBearing' : 'WINDBEARING','windGust' : 'WINDGUST',
+                              # 'windSpeed' : 'WINDSPEED'}, inplace=True)
 
 
 # # **Create wind Direction and season flags**
@@ -134,29 +135,29 @@ df_oms_live.rename(columns = {'cloudCover' : 'CLOUDCOVER','dewPoint' : 'DEWPOINT
 # df_oms_live['WIND_DIRECTION'] = df_incidentdevicelocation_['WINDBEARING'].apply(lambda x: 'N-E-N' if (x >= 1)&(x < 45) else 0)
 
 def create_wind_direction(x):
-    if ((x>=1) & (x<45)):
-        direction = 'N-E-N'
-    elif ((x>=45) & (x<90)):
-        direction = 'N-E-E'
-    elif ((x>=90) & (x<180)):
-        direction = 'S-E-E'
-    elif ((x>=135) & (x<180)):
-        direction = 'S-E-S'
-    elif ((x>=180) & (x<225)):
-        direction = 'S-W-S'
-    elif ((x>=225) & (x<270)):
-        direction = 'S-W-W' 
-    elif ((x>=270) & (x<315)):
-        direction = 'N-W-W'
-    elif ((x>=315) & (x<360)):
-        direction = 'N-W-N'
-    else :
-        direction = None
-    
-    return direction
+  if ((x>=1) & (x<45)):
+      direction = 'N-E-N'
+  elif ((x>=45) & (x<90)):
+      direction = 'N-E-E'
+  elif ((x>=90) & (x<180)):
+      direction = 'S-E-E'
+  elif ((x>=135) & (x<180)):
+      direction = 'S-E-S'
+  elif ((x>=180) & (x<225)):
+      direction = 'S-W-S'
+  elif ((x>=225) & (x<270)):
+      direction = 'S-W-W' 
+  elif ((x>=270) & (x<315)):
+      direction = 'N-W-W'
+  elif ((x>=315) & (x<360)):
+      direction = 'N-W-N'
+  else :
+      direction = None
+  
+  return direction
 
-df_oms_live['WINDBEARING'] = df_oms_live['WINDBEARING'].apply(pd.to_numeric, errors='coerce')
-df_oms_live['WIND_DIRECTION'] = df_oms_live['WINDBEARING'].apply(create_wind_direction)
+#df_oms_live['WINDBEARING'] = df_oms_live['WINDBEARING'].apply(pd.to_numeric, errors='coerce')
+df_oms_live['WIND_DIRECTION'] = df_oms_live['windDirAvg'].apply(create_wind_direction)
 
 
 df_oms_live['MONTH']=pd.to_datetime(df_oms_live['CREATION_DATETIME']).dt.month
@@ -168,17 +169,22 @@ df_oms_live['SEASON'][(df_oms_live['MONTH']>=10)&(df_oms_live['MONTH']<=11)]='FA
 
 df_oms_live.drop(['MONTH'],axis=1,inplace=True)
 
+def create_weekend_flag(x):
+  if (x>=5):
+      flag = 1
+  else :
+      flag=0
+  return flag
+
+df_oms_live['weekday']=pd.to_datetime(df_oms_live['CREATION_DATETIME']).dt.dayofweek
+df_oms_live['weekend_flag']= df_oms_live['weekday'].apply(create_weekend_flag)
+
+df_oms_live.drop(['weekday'],axis=1,inplace=True)
 
 # # **Write OMS Live and Darksky Dataset Curated**
 
 # In[ ]:
+df_oms_live.drop(['Location','latitude','longitude'],axis=1,inplace=True)
+df_oms_live.drop(['_c0','_c1'],axis=1,inplace=True)
 
-
-df_oms_live.to_csv('gs://aes-datahub-0002-curated/Outage_Restoration/Live_Data_Curation/Dark-sky/OMS_Dark-sky_Live_Data.csv',index=False)
-
-
-# In[ ]:
-
-
-
-
+df_oms_live.to_csv('gs://aes-datahub-0002-curated/Outage_Restoration/Live_Data_Curation/weather-source/OMS_weather-source_Live_Data.csv',index=False)
