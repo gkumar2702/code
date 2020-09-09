@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
  
-http_proxy=http://10.245.5.249:8080
+http_proxy="http://proxy.ouraes.com:8080"
 export http_proxy
-https_proxy=https://10.245.5.249:8080
+https_proxy="https://proxy.ouraes.com:8080"
 export https_proxy
 
 
@@ -23,10 +23,11 @@ pip install xgboost
 pip install holidays
 pip install lxml
 pip install google-cloud-storage
+pip install google-cloud-bigquery==1.26.0
 pip install dateparser
 pip install tabula-py
 pip install more-itertools
-pip install pandas-gbq
+pip install pandas-gbq==0.12
 pip install factor_analyzer
 pip install xlrd
 pip install gcsfs

@@ -1,16 +1,18 @@
 import os
 import datetime
+import subprocess
 from airflow import models
 from airflow.models import Variable
 from airflow.contrib.operators.dataflow_operator import GoogleCloudBucketHelper
 from airflow.models import BaseOperator
+from airflow.operators import bash_operator
+from airflow.operators import python_operator
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.bash_operator  import BashOperator
 from airflow.contrib.hooks.gcp_api_base_hook import GoogleCloudBaseHook
 from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
-from itertools import product
+from datetime import date,timedelta,timezone
 from google.cloud import storage
-from google.cloud.storage.blob import Blob
 from airflow.contrib.operators.dataproc_operator import (DataprocClusterCreateOperator, DataProcPySparkOperator, DataprocClusterDeleteOperator)
 from airflow.operators.email_operator import EmailOperator
 from airflow.models import DAG
@@ -19,23 +21,20 @@ from airflow.utils.trigger_rule import TriggerRule
 # ===================Variables=================================
 env = Variable.get("env")
 print(env)
-JOB_NAME = 'outage-cluster-creation-dag'
+JOB_NAME = 'outage-diagnostic-backend'
 PROJECT = 'aes-datahub-'+env
 COMPOSER_NAME = 'composer-'+env
 COMPOSER_BUCKET = 'us-east4-composer-0002-8d07c42c-bucket'
 DATAPROC_BUCKET = 'aes-datahub-0002-temp'
-cluster_name_r = 'outage-r-cluster-0002'
-cluster_name_python = 'outage-python-cluster-0002'
 yesterday = datetime.datetime.combine(
     datetime.datetime.today() - datetime.timedelta(1),
     datetime.datetime.min.time())
-
 
 # =================== DAG Arguments =================================
 default_args = {
     'start_date': yesterday,
     'email_on_failure': True,
-    'email': 'musigma.bkumar.c@AES.COM',
+    'email': 'sudheer.bandla@mu-sigma.com',
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': datetime.timedelta(minutes=1),
@@ -51,38 +50,22 @@ default_args = {
 with DAG(
         dag_id=JOB_NAME,
         default_args=default_args,
-        schedule_interval='@once'
+        schedule_interval='0 6 * * *'
 ) as dag:
-	create_cluster_r = DataprocClusterCreateOperator(
-		task_id='create_dataproc_r_cluster',
-		cluster_name=cluster_name_r,
-		project_id=PROJECT,
-        service_account="composer-0002@aes-datahub-0002.iam.gserviceaccount.com",
-		num_workers=3,
-		num_masters=1,
-		master_machine_type='n1-standard-8',
-		worker_machine_type='n1-standard-8',
-		storage_bucket=DATAPROC_BUCKET,
-		image_version= "preview",
-		init_actions_uris=['gs://aes-datahub-0002-curated/Outage_Restoration/packages/requiredpackages_r.sh'],
-		init_action_timeout='150m',
-		dag=dag
-		)
+  diagnostic= DataProcPySparkOperator(task_id='Diagnostic_Daily_Append',
+    main='/home/airflow/gcs/data/Outage_restoration/IPL/Python_scripts/diagnostic_view.py',
+    arguments=None, 
+    archives=None, 
+    pyfiles=None, 
+    files=None, 
+    cluster_name='outage-python-cluster-0002', 
+    dataproc_pyspark_properties=None, 
+    dataproc_pyspark_jars=None, 
+    gcp_conn_id='google_cloud_default', 
+    delegate_to=None, 
+    region='us-east4', 
+    job_error_states=['ERROR'], 
+    dag=dag
+    )
 
-	create_cluster_python = DataprocClusterCreateOperator(
-		task_id='create_dataproc_py_cluster',
-		cluster_name=cluster_name_python,
-		project_id=PROJECT,
-        service_account="composer-0002@aes-datahub-0002.iam.gserviceaccount.com",
-		num_workers=3,
-		num_masters=1,
-		master_machine_type='n1-standard-8',
-		worker_machine_type='n1-standard-8',
-		storage_bucket=DATAPROC_BUCKET,
-		image_version= "1.4",
-		init_actions_uris=['gs://aes-datahub-0002-curated/Outage_Restoration/packages/packages_test.sh'],
-		init_action_timeout='150m',
-		dag=dag
-		)
-
-[create_cluster_r,create_cluster_python]
+diagnostic
