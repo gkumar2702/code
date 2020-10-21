@@ -43,7 +43,8 @@ with DAG(
         schedule_interval='0 6 * * *'
 ) as dag:
     DIAGNOSTIC = DataProcPySparkOperator(task_id='Diagnostic_Daily_Append',
-                                         main='/home/airflow/gcs/data/Outage_restoration/IPL/Python_scripts/diagnostic_view.py',
+                                         main='/home/airflow/gcs/data/Outage_restoration/\
+										       IPL/Python_scripts/diagnostic_view.py',
                                          arguments=None,
                                          archives=None,
                                          pyfiles=None,
@@ -59,7 +60,8 @@ with DAG(
                                         )
 
     STORM_LEVEL = DataProcPySparkOperator(task_id='Storm_Diagnostic_Daily_Append',
-                                          main='/home/airflow/gcs/data/Outage_restoration/IPL/Python_scripts/storm_level_comparison.py',
+                                          main='/home/airflow/gcs/data/Outage_restoration/IPL/\
+										        Python_scripts/storm_level_comparison.py',
                                           arguments=None,
                                           archives=None,
                                           pyfiles=None,

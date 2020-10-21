@@ -18,28 +18,26 @@ Run-time environments: Pyspark,SparkR and python callable
 
 """
 import datetime
-from tempfile import NamedTemporaryFile
-from typing import Optional, Union
+#from tempfile import NamedTemporaryFile
+#from typing import Optional, Union
 from airflow.models import Variable
-from airflow.contrib.operators.bigquery_to_gcs import BigQueryToCloudStorageOperator
-from airflow.operators.email_operator import EmailOperator
-from airflow.contrib.operators.dataproc_operator import (DataprocClusterCreateOperator,
-                                                         DataProcPySparkOperator,
-                                                         DataprocClusterDeleteOperator)
+#from airflow.contrib.operators.bigquery_to_gcs import BigQueryToCloudStorageOperator
+#from airflow.operators.email_operator import EmailOperator
+from airflow.contrib.operators.dataproc_operator import (DataProcPySparkOperator)
 from airflow.models import DAG
-from airflow.utils.trigger_rule import TriggerRule
-from airflow import models
-from airflow import AirflowException
-from airflow.models import BaseOperator
-from airflow.operators.bash_operator  import BashOperator
-from airflow.contrib.operators.gcs_to_bq import GoogleCloudStorageToBigQueryOperator
-from airflow.operators.dummy_operator import DummyOperator
-from airflow.utils.decorators import apply_defaults
-from airflow.contrib.hooks.sftp_hook import SFTPHook
-from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
-from airflow.contrib.operators.bigquery_operator import BigQueryOperator
-from airflow.operators.dagrun_operator  import TriggerDagRunOperator
-from airflow.contrib.operators import bigquery_to_gcs
+#from airflow.utils.trigger_rule import TriggerRule
+#from airflow import models
+#from airflow import AirflowException
+#from airflow.models import BaseOperator
+#from airflow.operators.bash_operator  import BashOperator
+#from airflow.contrib.operators.gcs_to_bq import GoogleCloudStorageToBigQueryOperator
+#from airflow.operators.dummy_operator import DummyOperator
+#from airflow.utils.decorators import apply_defaults
+#from airflow.contrib.hooks.sftp_hook import SFTPHook
+#from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
+#from airflow.contrib.operators.bigquery_operator import BigQueryOperator
+#from airflow.operators.dagrun_operator  import TriggerDagRunOperator
+#from airflow.contrib.operators import bigquery_to_gcs
 
 # ===================Variables=================================
 ENV = Variable.get("env")
@@ -94,7 +92,7 @@ DEFAULT_ARGS = {
 # =================== DAG Definition =================================
 with DAG(
         dag_id=JOB_NAME,
-        DEFAULT_ARGS=DEFAULT_ARGS,
+        default_args=DEFAULT_ARGS,
         schedule_interval='*/32 * * * *'
 ) as dag:
     OMS_LIVE_DATASET_COLLATION = DataProcPySparkOperator(task_id='OMS_LIVE_DATA_COLLATION',

@@ -10,27 +10,12 @@ Environment: Composer-0001
 Run-time environments: Python and SparkR
 """
 
-import os
 import datetime
-import subprocess
-from airflow import models
-from airflow.models import Variable
+from airflow.models import Variable,DAG
 from airflow.contrib.operators.dataproc_operator import (
-    DataprocClusterCreateOperator, DataProcPySparkOperator, DataprocClusterDeleteOperator)
-from airflow.contrib.operators.dataflow_operator import GoogleCloudBucketHelper
-from airflow.models import BaseOperator
-from airflow.operators import bash_operator
-from airflow.operators import python_operator
-from airflow.operators.python_operator import PythonOperator
+    DataProcPySparkOperator)
 from airflow.operators.bash_operator  import BashOperator
-from airflow.contrib.hooks.gcp_api_base_hook import GoogleCloudBaseHook
-from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
-from datetime import date, timedelta, timezone
-from google.cloud import storage
 from airflow.contrib.operators.gcs_to_bq import GoogleCloudStorageToBigQueryOperator
-from airflow.operators.email_operator import EmailOperator
-from airflow.models import DAG
-from airflow.utils.trigger_rule import TriggerRule
 
 # ===================Variables=================================
 ENV = Variable.get("env")
@@ -107,10 +92,11 @@ with DAG(
         bucket=BUCKET,
         schema_object="Outage_Restoration/Schema/ipl_personalities.json",
         skip_leading_rows=1,
-        source_objects=["Outage_Restoration/Live_Data_Curation/Forecast_Storm_Profiles/forecast_storm_profiles.csv"],
+        source_objects=["Outage_Restoration/Live_Data_Curation/Forecast_Storm_Profiles/\
+		                 forecast_storm_profiles.csv"],
         create_disposition='CREATE_IF_NEEDED',
         destination_project_dataset_table=BQ_PROJECT+"."+BQ_DATASET+"."+BQ_TABLE_REPO,
         write_disposition='WRITE_APPEND')
-      
+
 #Pipeline
 WEATHERSOURCE_IPL >> CLUSTER_CLASSIFICATION >> CLUSTER_CLASSIFICATION_FORECAST >> WRITE_CSV_TO_BQ

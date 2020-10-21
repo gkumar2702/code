@@ -5,19 +5,19 @@ Dag to predict the number of outages, number of customers, storm recovery and st
 import datetime
 from airflow.models import Variable
 from airflow.contrib.operators.dataproc_operator import (
-    DataprocClusterCreateOperator, DataProcPySparkOperator, DataprocClusterDeleteOperator)
+    DataProcPySparkOperator)
 from airflow.models import DAG
-from airflow.utils.trigger_rule import TriggerRule
-from airflow import models, BaseOperator, AirflowException
-from tempfile import NamedTemporaryFile
-from typing import Optional, Union
+#from airflow.utils.trigger_rule import TriggerRule
+#from airflow import AirflowException
+#from tempfile import NamedTemporaryFile
+#from typing import Optional, Union
 from airflow.operators.bash_operator  import BashOperator
-from airflow.utils.decorators import apply_defaults
-from airflow.contrib.hooks.sftp_hook import SFTPHook
-from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
-from airflow.contrib.operators.bigquery_operator import BigQueryOperator
-from airflow.operators.dagrun_operator  import TriggerDagRunOperator
-from airflow.contrib.operators import bigquery_to_gcs
+#from airflow.utils.decorators import apply_defaults
+#from airflow.contrib.hooks.sftp_hook import SFTPHook
+#from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
+#from airflow.contrib.operators.bigquery_operator import BigQueryOperator
+#from airflow.operators.dagrun_operator  import TriggerDagRunOperator
+#from airflow.contrib.operators import bigquery_to_gcs
 
 # ===================Variables=================================
 ENV = Variable.get("env")
