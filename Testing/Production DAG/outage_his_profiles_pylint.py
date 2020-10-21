@@ -46,7 +46,7 @@ DEFAULT_ARGS = {
 # =================== DAG Definition =================================
 with DAG(
         dag_id=JOB_NAME,
-        DEFAULT_ARGS=DEFAULT_ARGS,
+        default_args=DEFAULT_ARGS,
         schedule_interval='0 8 * * *'
 ) as dag:
     WEATHERSOURCE_IPL = DataProcPySparkOperator(
@@ -86,4 +86,4 @@ with DAG(
         destination_project_dataset_table=BQ_PROJECT+"."+BQ_DATASET+"."+BQ_TABLE_REPO,
         write_disposition='WRITE_APPEND')
 #Pipeline
-WEATHERSOURCE_IPL >> CLUSTER_CLASSIFICATION >> WRITE_CSV_TO_BQ
+#WEATHERSOURCE_IPL >> CLUSTER_CLASSIFICATION >> WRITE_CSV_TO_BQ
