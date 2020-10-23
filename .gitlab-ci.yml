@@ -8,7 +8,7 @@ deploying_dag_file_into_gcs-prod:
   image: google/cloud-sdk
   tags: ["stages"]
   only: 
-	- dev
+    - dev
   only:
     changes:
       - Testing/Production DAG/*
