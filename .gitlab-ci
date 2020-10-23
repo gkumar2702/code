@@ -1,0 +1,25 @@
+stages:
+  - deploy_test
+before_script:
+  - export TZ='Asia/Kolkata'
+deploying_dag_file_into_gcs-prod:
+  stage: deploy_test
+#  when: manual
+  image: google/cloud-sdk
+  tags: ["stages"]
+  only: 
+	- dev
+  only:
+    changes:
+      - Testing/Production DAG/*
+  script:
+    - apt-get install python3-openssl -qy
+    - echo 'nameserver 1.1.1.1'  > /etc/resolv.conf
+    - echo 'nameserver 1.0.0.1' >> /etc/resolv.conf
+    - mkdir -p ./creds
+    - echo $password_dev | base64 -d > ./creds/password_dev.json
+    - export GOOGLE_CREDENTIALS=$(cat ./creds/password_dev.json)
+    - gcloud auth activate-service-account $service_account_dev --key-file=./creds/password_dev.json
+    - gsutil rsync Testing/Production DAG/  gs://us-east4-composer-0002-8d07c42c-bucket/dags/Outage_test/
+
+
