@@ -21,6 +21,6 @@ deploying_dag_file_into_gcs-prod:
     - echo $password_dev | base64 -d > ./creds/password_dev.json
     - export GOOGLE_CREDENTIALS=$(cat ./creds/password_dev.json)
     - gcloud auth activate-service-account $service_account_dev --key-file=./creds/password_dev.json
-    - gsutil rsync Testing/Production DAG  gs://us-east4-composer-0002-8d07c42c-bucket/dags/Outage_test
+    - gsutil rsync -r Testing/Production DAG/  gs://us-east4-composer-0002-8d07c42c-bucket/dags/Outage_test/
 
 
