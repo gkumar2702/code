@@ -23,7 +23,7 @@ pylint_check:
     - pip3 install --upgrade pip
     - pip3 install -r requirements.txt
     - pwd
-    - cd Testing/Production Code
+    - cd "Testing/Production Code"
     - pylint --exit-zero curated_dataset_creation_pylint.py
     - pylint --exit-zero curated_dataset_creation_pylint.py > lint_dag.txt
     - score_dag=$(tail -2 lint_dag.txt | awk '{print $7}' | cut -d/ -f1)
