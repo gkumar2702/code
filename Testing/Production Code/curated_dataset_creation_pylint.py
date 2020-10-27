@@ -63,7 +63,7 @@ DF_OMSDS.drop(['Center_LAT',
 DF_OMSDS.head()
 # ## **Read output dataset and filter for Predicted Flag**
 try:
-    DF_PRED = 'SELECT OUTAGE_ID FROM aes-analytics-0002.mds_outage_restoration.IPL_Predictions'
+    DF_PRED = 'SELECT OUTAGE_ID FROM aes-analytics-0002.mds_outage_restoration.IPL_Predictions_HPT'
     DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0002")
     PREDICTIONS = list(DF_PRED['OUTAGE_ID'].unique())
     DF_OMSDS['OUTAGE_ID'] = DF_OMSDS['OUTAGE_ID'].astype(str)
@@ -144,7 +144,7 @@ RECORD_DATE_OUTAGE = (datetime.today()-timedelta(days=2)).date()
 logging.info(RECORD_DATE_OUTAGE)
 
 try:
-    PRED_OUTAGES = 'SELECT OUTAGE_ID, Creation_Time FROM aes-analytics-0002.mds_outage_restoration.IPL_Predictions where creation_time>='+"'"+str(RECORD_DATE_OUTAGE)+"'"
+    PRED_OUTAGES = 'SELECT OUTAGE_ID, Creation_Time FROM aes-analytics-0002.mds_outage_restoration.IPL_Predictions_HPT where creation_time>='+"'"+str(RECORD_DATE_OUTAGE)+"'"
     DF_PRED_OUTAGES = gbq.read_gbq(PRED_OUTAGES, project_id="aes-analytics-0002")
     DF_PRED_OUTAGES.reset_index(drop=True, inplace=True)
 except:

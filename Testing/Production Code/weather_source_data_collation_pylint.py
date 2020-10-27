@@ -53,7 +53,7 @@ for i in UNIQUE:
     current_date = pd.to_datetime(i).strftime('%Y-%m-%d')
     filename = WS_LOCATION+year_month+'/forecast_data/'+current_date+'/weathersource_daily_{}.csv'.format(i)
     logging.info(filename)
-    WSFILES.append(SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ", ").load(
+    WSFILES.append(SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ",").load(
         filename).toPandas())
 
 WS_DF = pd.concat(WSFILES)
