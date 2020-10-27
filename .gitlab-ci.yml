@@ -1,7 +1,35 @@
 stages:
+  - pylint
   - deploy_test
 before_script:
   - export TZ='Asia/Kolkata'
+pylint_check:
+  image: ubuntu:16.04
+  stage: pylint
+  tags: ["stages"]
+  only:
+    changes:
+      - Testing/Production DAG/*
+      - Testing/Production Code/*
+      - .gitlab-ci.yml
+      - requirements.txt
+  before_script:
+    - apt-get update
+    - apt-get install default-jdk -y
+  script:
+    - apt update
+    - apt install python3 -qy
+    - apt install python3-pip -qy
+    - pip3 install --upgrade pip
+    - pip3 install -r requirements.txt
+    - pwd
+    - cd Testing/Production Code
+    - pylint --exit-zero curated_dataset_creation_pylint.py
+    - pylint --exit-zero curated_dataset_creation_pylint.py > lint_dag.txt
+    - score_dag=$(tail -2 lint_dag.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_dag%.*}
+    - if [ ${score_dag%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+
 deploying_dag_file_into_gcs-prod:
   stage: deploy_test
 #  when: manual
