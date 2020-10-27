@@ -9,8 +9,8 @@ import datetime as dt
 import logging
 import pandas as pd
 import numpy as np
-from google.cloud import storage
 from pandas.io import gbq
+from google.cloud import storage
 from pyspark.context import SparkContext
 from pyspark.sql import SQLContext, SparkSession
 
@@ -26,10 +26,7 @@ logging.basicConfig(level=logging.INFO)
 # In[15]:
 
 
-DF_OMS_LIVE = SPARK.read.format('CSV').option("header", "true").option("\
-    inferSchema", "true").option("delimiter", ",").load('\
-        gs://aes-analytics-0001-curated/Outage_Restoration\
-            /Live_Data_Curation/OMS/OMS_Live_Data.csv').toPandas()
+DF_OMS_LIVE = SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ",").load('gs://aes-analytics-0002-curated/Outage_Restoration/Live_Data_Curation/OMS/OMS_Live_Data.csv').toPandas()
 DF_OMS_LIVE = DF_OMS_LIVE.loc[:, ~DF_OMS_LIVE.columns.str.contains('^Unnamed')]
 
 
@@ -48,18 +45,16 @@ UNIQUE_DATES['Date'] = UNIQUE_DATES['Date'].apply(lambda x: x.strftime('%Y%m%d')
 UNIQUE = UNIQUE_DATES['Date'].to_list()
 logging.info(UNIQUE)
 
-WS_LOCATION = 'gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/'
+WS_LOCATION = 'gs://aes-datahub-0002-raw/Weather/weather_source/USA/Indianapolis/'
 WSFILES = []
 
 for i in UNIQUE:
     year_month = pd.to_datetime(i).strftime('%Y-%m')
     current_date = pd.to_datetime(i).strftime('%Y-%m-%d')
-    filename = WS_LOCATION+year_month+'\
-        /forecast_data/'+current_date+'/weathersource_daily_{}.csv'.format(i)
+    filename = WS_LOCATION+year_month+'/forecast_data/'+current_date+'/weathersource_daily_{}.csv'.format(i)
     logging.info(filename)
-    WSFILES.append(SPARK.read.format('CSV').option("\
-        header", "true").option("inferSchema", "true").option("delimiter", ",").load(
-            filename).toPandas())
+    WSFILES.append(SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ", ").load(
+        filename).toPandas())
 
 WS_DF = pd.concat(WSFILES)
 WS_DF.reset_index(drop=True, inplace=True)
@@ -91,10 +86,10 @@ WS_DF['sfcPresRatio'] = WS_DF['sfcPresMax'] / WS_DF['sfcPresMin']
 ## data qc check for nulls
 
 WS_DF = WS_DF.replace([np.inf, -np.inf], np.nan)
-NULLS = WS_DF.isnull().sum()
+nulls = WS_DF.isnull().sum()
 
-DF_NULLS = pd.DataFrame({'Feature': NULLS.index, 'VALUES': NULLS.values})
-logging.info(DF_NULLS[DF_NULLS.VALUES >= 1])
+DF_NULLS = pd.DataFrame({'Feature': nulls.index, 'VALUES': nulls.values})
+DF_NULLS[DF_NULLS.VALUES >= 1]
 
 logging.info(WS_DF.head(2))
 
@@ -117,9 +112,9 @@ logging.info(DF_OMS_LIVE.shape)
 
 def create_wind_direction(x_wind_direction):
     '''
-    Input - Wind direction columns
-    Output - Wind direction classes
-    '''
+Input - Wind direction columns
+Output - Wind direction classes
+   '''
     if(x_wind_direction >= 1) & (x_wind_direction < 45):
         direction = 'N-E-N'
     elif(x_wind_direction >= 45) & (x_wind_direction < 90):
@@ -163,5 +158,5 @@ DF_OMS_LIVE.drop(['weekday'], axis=1, inplace=True)
 
 logging.disable(logging.CRITICAL)
 DF_OMS_LIVE.drop(['Location'], axis=1, inplace=True)
-DF_OMS_LIVE.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration\
-    /Live_Data_Curation/weather-source/OMS_weather-source_Live_Data.csv', index=False)
+DF_OMS_LIVE.to_csv('gs://aes-analytics-0002-curated/Outage_Restoration/Live_Data_Curation/weather'\
+                   '-source/OMS_weather-source_Live_Data.csv', index=False)

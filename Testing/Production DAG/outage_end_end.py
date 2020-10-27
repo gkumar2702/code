@@ -11,7 +11,7 @@ Schedule: At the end of every 30 minutes
 Description: Scheduled DAG to process OMS data arriving at 30 min interval,
 adding the weather data and predicting using RDS model objects
 
-Environment: Composer-0001
+Environment: Composer-0002
 
 Run-time environments: Pyspark,SparkR and python callable
 
@@ -42,26 +42,26 @@ from airflow.models import DAG
 # ===================Variables=================================
 ENV = Variable.get("env")
 print(ENV)
-JOB_NAME = 'outage_END_END'
+JOB_NAME = 'outage_END_END_pylint'
 PROJECT = 'aes-datahub-'+ENV
 COMPOSER_NAME = 'composer-'+ENV
-BUCKET = 'aes-analytics-0001-curated'
-COMPOSER_BUCKET = 'us-east4-composer-0001-40ca8a74-bucket'
-DATAPROC_BUCKET = 'aes-datahub-0001-temp'
+BUCKET = 'aes-analytics-0002-curated'
+COMPOSER_BUCKET = 'us-east4-composer-0002-8d07c42c-bucket'
+DATAPROC_BUCKET = 'aes-datahub-0002-temp'
 #LANDING_BUCKET = '{}-landing'.format(PROJECT)
 RAW_BUCKET = 'aes-datahub-'+ENV+'-raw'
-CLUSTER_NAME = 'outage-python-cluster-0001'
+CLUSTER_NAME = 'outage-python-cluster-0002'
 #subnetwork_uri= 'composer-'+ENV,
-BQ_PROJECT = "aes-analytics-0001"
+BQ_PROJECT = "aes-analytics-0002"
 BQ_DATASET = "mds_outage_restoration"
 BQ_TABLE_CHVG = "IPL_Live_Input_Master_Dataset"
 BQ_TABLE_FINAL = "IPL_LIVE_PREDICTIONS"
 BQ_TABLE_REPO = "IPL_PREDICTIONS"
-CLUSTER_NAME_R = 'outage-r-cluster-0001'
+CLUSTER_NAME_R = 'outage-r-cluster-0002'
 EMAIL = ['musigma.bkumar.c@aes.com']
 BQ_DATASET_NAME = "mds_outage_restoration"
 # intermediate_table = BQ_PROJECT+'.'+BQ_DATASET_NAME +'.IPL_Live_Master_Dataset'
-# output_file='gs://aes-analytics-0001-curated/Outage_Restoration/Staging/\
+# output_file='gs://aes-analytics-0002-curated/Outage_Restoration/Staging/\
 # IPL_Live_Master_Dataset.csv'
 
 OUTPUT_DATE = datetime.datetime.now().strftime("%Y%m%d")
@@ -96,15 +96,16 @@ with DAG(
         schedule_interval='*/32 * * * *'
 ) as dag:
     OMS_LIVE_DATASET_COLLATION = DataProcPySparkOperator(task_id='OMS_LIVE_DATA_COLLATION',
-                                                         main='gs://us-east4-composer-0001-40ca8a74\
-														       -bucket/data/Outage_restoration/IPL/\
-															   Python_scripts/live_oms_\
-															   preprocessing_pylint.py',
+                                                         main='gs://us-east4-composer-0002-8d07c4'\
+                                                               '2c-bucket/data/'\
+                                                               'Outage_restoration/IPL/'\
+															   'Python_scripts/live_oms_'\
+															   'preprocessing_pylint.py',
                                                          arguments=None,
                                                          archives=None,
                                                          pyfiles=None,
                                                          files=None,
-                                                         CLUSTER_NAME='dp-outage-python-0001',
+                                                         cluster_name='dp-outage-python-0002',
                                                          dataproc_pyspark_properties=None,
                                                          dataproc_pyspark_jars=None,
                                                          gcp_conn_id='google_cloud_default',
@@ -114,35 +115,35 @@ with DAG(
                                                          dag=dag,
                                                          email_on_failure=None)
 
-    DARKSKY_WEATHER_DATA_COLLATION = DataProcPySparkOperator(task_id='WEATHER_DATA_COLLATION',
-                                                             main='gs://us-east4-composer-0001\
-															       -40ca8a74-bucket/data/Outage_\
-																   restoration/IPL/Python_scripts/\
-																   weather_source_data_collation_\
-																   pylint.py',
-                                                             arguments=None,
-                                                             archives=None,
-                                                             pyfiles=None,
-                                                             files=None,
-                                                             CLUSTER_NAME='dp-outage-python-0001',
-                                                             dataproc_pyspark_properties=None,
-                                                             dataproc_pyspark_jars=None,
-                                                             gcp_conn_id='google_cloud_default',
-                                                             delegate_to=None,
-                                                             region='us-east4',
-                                                             job_error_states=['ERROR'],
-                                                             dag=dag)
+    WEATHER_DATA_COLLATION = DataProcPySparkOperator(task_id='WEATHER_DATA_COLLATION',
+                                                     main='gs://us-east4-composer-0002-'\
+                        							       '8d07c42c-bucket/data/Outage_'\
+                        								   'restoration/IPL/Python_scripts/'\
+                        								   'weather_source_data_collation'\
+                        	    						   '_pylint.py',
+                                                     arguments=None,
+                                                     archives=None,
+                                                     pyfiles=None,
+                                                     files=None,
+                                                     cluster_name='dp-outage-python-0002',
+                                                     dataproc_pyspark_properties=None,
+                                                     dataproc_pyspark_jars=None,
+                                                     gcp_conn_id='google_cloud_default',
+                                                     delegate_to=None,
+                                                     region='us-east4',
+                                                     job_error_states=['ERROR'],
+                                                     dag=dag)
 
     CURATED_DATASET_CREATION = DataProcPySparkOperator(task_id='CURATED_DATASET_CREATION',
-                                                       main='gs://us-east4-composer-0001-40ca8a74\
-                                                             -bucket/data/Outage_restoration/IPL/\
-                                                             Python_scripts/curated_dataset_\
-													         creation_pylint.py',
+                                                       main='gs://us-east4-composer-0002-8d07c42c'\
+                                                             '-bucket/data/Outage_restoration/IPL'\
+                                                             '/Python_scripts/curated_dataset_'\
+													         'creation_pylint.py',
                                                        arguments=None,
                                                        archives=None,
                                                        pyfiles=None,
                                                        files=None,
-                                                       CLUSTER_NAME='dp-outage-python-0001',
+                                                       cluster_name='dp-outage-python-0002',
                                                        dataproc_pyspark_properties=None,
                                                        dataproc_pyspark_jars=None,
                                                        gcp_conn_id='google_cloud_default',
@@ -153,14 +154,14 @@ with DAG(
                                                        email_on_failure=None)
 
     REGRESSION_CODE_RUN = DataProcPySparkOperator(task_id='Regression_Run',
-                                                  main='gs://us-east4-composer-0001-40ca8a74-\
-												        bucket/data/Outage_restoration/IPL/\
-								                        Python_scripts/load_predict_pylint.py',
+                                                  main='gs://us-east4-composer-0002-8d07c42c-'\
+                                                        'bucket/data/Outage_restoration/IPL/'\
+                                                        'Python_scripts/load_predict_pylint.py',
                                                   arguments=None,
                                                   archives=None,
                                                   pyfiles=None,
                                                   files=None,
-                                                  CLUSTER_NAME='dp-outage-python-0001',
+                                                  cluster_name='dp-outage-python-0002',
                                                   dataproc_pyspark_properties=None,
                                                   dataproc_pyspark_jars=None,
                                                   gcp_conn_id='google_cloud_default',
@@ -169,5 +170,4 @@ with DAG(
                                                   job_error_states=['ERROR'],
                                                   dag=dag)
 # Create pipeline
-OMS_LIVE_DATASET_COLLATION >> DARKSKY_WEATHER_DATA_COLLATION >> CURATED_DATASET_CREATION\
-    >> REGRESSION_CODE_RUN
+OMS_LIVE_DATASET_COLLATION >> WEATHER_DATA_COLLATION >> CURATED_DATASET_CREATION >> REGRESSION_CODE_RUN

@@ -13,14 +13,12 @@ warnings.filterwarnings("ignore")
 
 #Reading the input files
 
-DF1 = pd.read_csv("gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/\
-                   STORM_DURATION/Duration_Prediction.csv")
-DF2 = pd.read_csv("gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/\
-                   NUMBER_OF_OUTAGES/Outages_Prediction.csv")
-DF3 = pd.read_csv("gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/\
-                   CUSTOMER_QUANTITY/Predicted_Cust_Qty.csv")
-DF4 = pd.read_csv("gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/\
-                   RECOVERY_DURATION/Predicted_Recovery_Duration.csv")
+PATH = "gs://us-east4-composer-0002-8d07c42c-bucket/data/Outage_restoration/IPL/"
+
+DF1 = pd.read_csv(PATH + "STORM_DURATION/Duration_Prediction.csv")
+DF2 = pd.read_csv(PATH + "NUMBER_OF_OUTAGES/Outages_Prediction.csv")
+DF3 = pd.read_csv(PATH + "CUSTOMER_QUANTITY/Predicted_Cust_Qty.csv")
+DF4 = pd.read_csv(PATH + "RECOVERY_DURATION/Predicted_Recovery_Duration.csv")
 
 #Merging the input files
 
@@ -30,10 +28,10 @@ FINAL_DF = FINAL_DF.merge(DF4, how='left', left_on='Date', right_on='Date')
 
 # Renaming the columns
 
-FINAL_DF.rename(columns={'Predicted_duration_in_hours':'Storm_duration_in_hours',
+FINAL_DF.rename(columns={'predicted_DURATION':'Storm_duration_in_hours',
                          'Predicted_Cust_Qty':'Customer_quantity',
                          'Predicted_Recovery_Duration_in_hours':'Recovery_duration_in_hours',
-                         'Predicted_number_of_outages':'Number_of_outages'}, inplace=True)
+                         'predicted_Number_of_OUTAGES':'Number_of_outages'}, inplace=True)
 
 #Creating the Number of days ahead column
 
@@ -57,5 +55,5 @@ FINAL_DF = FINAL_DF[['Date', 'Number_of_days_ahead', 'Storm_duration_in_hours',
 
 #Writing the output to the big query table
 
-FINAL_DF.to_gbq('mds_outage_restoration.IPL_Storm_Preparations', project_id='aes-analytics-0001',
+FINAL_DF.to_gbq('mds_outage_restoration.IPL_Storm_Preparations', project_id='aes-analytics-0002',
                 chunksize=None, reauth=False, if_exists='append', auth_local_webserver=False)

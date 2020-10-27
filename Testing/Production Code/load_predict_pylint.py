@@ -11,8 +11,8 @@ for restoration
 import pickle
 import logging
 import datetime as dt
-from pytz import timezone
 from datetime import datetime, date, timedelta
+from pytz import timezone
 import pandas as pd
 import numpy as np
 from pyspark.context import SparkContext
@@ -25,11 +25,11 @@ SPARK = SparkSession(SC)
 
 # ## **Read OMS Live Cureated Dataset**
 
-BUCKET_NAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/'
+BUCKET_NAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/Staging/'
 
 DF_ADS_FINAL = SPARK.read.format('CSV').option("header", "true").option(
     "inferSchema", "true").option("delimiter", ",").load(
-    BUCKET_NAME + 'IPL_Live_Master_Dataset_ws.csv').toPandas()
+        BUCKET_NAME + 'IPL_Live_Master_Dataset_ws.csv').toPandas()
 
 DF_ADS_FINAL = DF_ADS_FINAL.loc[:, ~DF_ADS_FINAL.columns.str.contains('^Unnamed')]
 logging.info(DF_ADS_FINAL.shape)
@@ -44,7 +44,7 @@ logging.info(DF_ADS_FINAL.isnull().values.any())
 # In[3]:
 
 
-BUCKET_NAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation'
+BUCKET_NAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/Live_Data_Curation'
 
 DF_ADS_FINAL['CREATION_DATETIME'] = pd.to_datetime(
     DF_ADS_FINAL['CREATION_DATETIME'], errors='coerce')
@@ -127,8 +127,7 @@ logging.info(list(DF_ADS_FINAL.columns))
 
 # In[6]:
 
-RF_MODEL = pd.read_pickle(r'gs://aes-analytics-0001-curated/Outage_Restoration\
-    /Model_object/Random_Forest_GridSearch_09172020.pkl')
+RF_MODEL = pd.read_pickle(r'gs://aes-analytics-0002-curated/Outage_Restoration/Model_object/Random_Forest_GridSearch_09172020.pkl')
 
 logging.info("Model Loaded")
 
@@ -136,7 +135,7 @@ logging.info("Model Loaded")
 # In[7]:
 
 
-BUCKET_NAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/'
+BUCKET_NAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/'
 
 FEATURES_DF = SPARK.read.format('CSV').option("header", "true").option(
     "inferSchema", "true").option("delimiter", ",").load(
@@ -235,19 +234,18 @@ DF_ADS_FINAL = DF_ADS_FINAL[['OUTAGE_ID', 'INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID
                              'Restoration_Period', 'Cluster_ID']]
 DF_ADS_FINAL.rename({'CREATION_DATETIME' : 'Creation_Time',
                      'Predicted_ETR' : 'Estimated_Restoration_Time',
-                     'Restoration_Period' : 'ETR' ,
-                     'Cluster_ID' : 'Weather_Profile'}, axis=1, inplace=True)
+                     'Restoration_Period' : 'ETR', 'Cluster_ID' : 'Weather_Profile'}, axis=1, inplace=True)
 
-DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Predictions', project_id='aes-analytics-0001',
+DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Predictions', project_id='aes-analytics-0002',
                     chunksize=None, reauth=False, if_exists='append', auth_local_webserver=False,
                     table_schema=None, location=None, progress_bar=True, credentials=None)
 
-DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Live_Predictions', project_id='aes-analytics-0001',
+DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Live_Predictions', project_id='aes-analytics-0002',
                     chunksize=None, reauth=False, if_exists='replace', auth_local_webserver=False,
                     table_schema=None, location=None, progress_bar=True, credentials=None)
 
 DF_ADS_FINAL.to_csv(
-    'gs://aes-analytics-0001-curated/Outage_Restoration/OMS/ERT_live/ERT_predictions.csv')
+    'gs://aes-analytics-0002-curated/Outage_Restoration/OMS/ERT_live/ERT_predictions.csv')
 
 YEAR_MONTH = datetime.now(timezone('US/Eastern')).strftime('%Y-%m')
 CURRENT_DATE = datetime.now(timezone('US/Eastern')).strftime('%Y-%m-%d')
@@ -257,7 +255,7 @@ logging.info(CURRENT_DATE)
 logging.info(CURRENT_DATE_HOUR)
 logging.disable(logging.CRITICAL)
 
-FILENAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Deliverables/ERTs/{}/{}/TTR_predictions_{}.csv'.format(YEAR_MONTH, CURRENT_DATE, CURRENT_DATE_HOUR)
+FILENAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/OMS/Deliverables/ERTs/{}/{}/TTR_predictions_{}.csv'.format(YEAR_MONTH, CURRENT_DATE, CURRENT_DATE_HOUR)
 logging.info(FILENAME)
 
 DF_ADS_FINAL.to_csv(FILENAME, index=False)

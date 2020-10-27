@@ -10,11 +10,11 @@ from airflow.models import DAG
 # ===================Variables=================================
 ENV = Variable.get("env")
 print(ENV)
-JOB_NAME = 'outage-diagnostic-backend'
+JOB_NAME = 'outage-diagnostic-backend_pylint'
 PROJECT = 'aes-datahub-'+ENV
 COMPOSER_NAME = 'composer-'+ENV
-COMPOSER_BUCKET = 'us-east4-composer-0001-40ca8a74-bucket'
-DATAPROC_BUCKET = 'aes-datahub-0001-temp'
+COMPOSER_BUCKET = 'us-east4-composer-0002-8d07c42c-bucket'
+DATAPROC_BUCKET = 'aes-datahub-0002-temp'
 YESTERDAY = datetime.datetime.combine(
     datetime.datetime.today() - datetime.timedelta(1),
     datetime.datetime.min.time())
@@ -43,13 +43,13 @@ with DAG(
         schedule_interval='0 6 * * *'
 ) as dag:
     DIAGNOSTIC = DataProcPySparkOperator(task_id='Diagnostic_Daily_Append',
-                                         main='/home/airflow/gcs/data/Outage_restoration/\
-										       IPL/Python_scripts/diagnostic_view.py',
+                                         main='/home/airflow/gcs/data/Outage_restoration/'\
+										       'IPL/Python_scripts/diagnostic_view.py',
                                          arguments=None,
                                          archives=None,
                                          pyfiles=None,
                                          files=None,
-                                         cluster_name='dp-outage-python-0001',
+                                         cluster_name='dp-outage-python-0002',
                                          dataproc_pyspark_properties=None,
                                          dataproc_pyspark_jars=None,
                                          gcp_conn_id='google_cloud_default',
@@ -60,13 +60,13 @@ with DAG(
                                         )
 
     STORM_LEVEL = DataProcPySparkOperator(task_id='Storm_Diagnostic_Daily_Append',
-                                          main='/home/airflow/gcs/data/Outage_restoration/IPL/\
-										        Python_scripts/storm_level_comparison.py',
+                                          main='/home/airflow/gcs/data/Outage_restoration/IPL/'\
+										        'Python_scripts/storm_level_comparison_pylint.py',
                                           arguments=None,
                                           archives=None,
                                           pyfiles=None,
                                           files=None,
-                                          cluster_name='dp-outage-python-0001',
+                                          cluster_name='dp-outage-python-0002',
                                           dataproc_pyspark_properties=None,
                                           dataproc_pyspark_jars=None,
                                           gcp_conn_id='google_cloud_default',

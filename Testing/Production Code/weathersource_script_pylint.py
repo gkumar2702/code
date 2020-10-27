@@ -50,10 +50,10 @@ def ws_historical_data(start, end, lat, long, period='day', fields='all'):
     end = end.strftime('%Y-%m-%dT%H:%M:%S')
 
     weather_ = pd.DataFrame()
-    link = 'https://api.weathersource.com/v1/'+key+'/points/'+lat+','+long+'/history.json?period=\
-	       '+period+'&timestamp_between='+start+','+end+'&fields='+fields
+    link = 'https://api.weathersource.com/v1/'+key+'/points/'+lat+','+long\
+	       +'/history.json?period='+period+'&timestamp_between='+start+','+end+'&fields='+fields
     print(link)
-    response = requests.get(link, HEADERS=HEADERS, proxies=PROXY_DICT)
+    response = requests.get(link, headers=HEADERS, proxies=PROXY_DICT)
     json_obj = json.loads(response.content.decode('utf-8'))
     weather_ = json_normalize(json_obj)
 
@@ -84,10 +84,10 @@ def ws_forecast_data(start, end, lat, long, period='day', fields='all'):
     end = end.strftime('%Y-%m-%dT%H:%M:%S')
 
     weather_ = pd.DataFrame()
-    link = 'https://api.weathersource.com/v1/'+key+'/points/'+lat+','+long+'/forecast.json?period=\
-	       '+period+'&timestamp_between='+start+','+end+'&fields='+fields
+    link = 'https://api.weathersource.com/v1/'+key+'/points/'+lat+','+long\
+           +'/forecast.json?period='+period+'&timestamp_between='+start+','+end+'&fields='+fields
     print(link)
-    response = requests.get(link, HEADERS=HEADERS, proxies=PROXY_DICT)
+    response = requests.get(link, headers=HEADERS, proxies=PROXY_DICT)
     json_obj = json.loads(response.content.decode('utf-8'))
     weather_ = json_normalize(json_obj)
 
@@ -172,7 +172,7 @@ DATE_LIST = [PAST_START_DATE, PAST_END_DATE, TODAY_DATE, FORECAST_NEXT_DATE, FOR
 
 for i in range(0, 2):
     temp_df = WAETHERSOURCE_DF_HIS[WAETHERSOURCE_DF_HIS['timestamp'].astype(str) == DATE_LIST[i]]
-    loc = "gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/"
+    loc = "gs://aes-datahub-0002-raw/Weather/weather_source/USA/Indianapolis/"
     loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[:4] + "-" +\
     datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[4:6]
     loc = loc + "/actual_data/weathersource_daily_"
@@ -182,12 +182,12 @@ for i in range(0, 2):
 
 for i in range(2, 5):
     temp_df = WAETHERSOURCE_DF_FOR[WAETHERSOURCE_DF_FOR['timestamp'].astype(str) == DATE_LIST[i]]
-    loc = "gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/"
-    loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[:4] + "-" +\
-    datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[4:6]
+    loc = "gs://aes-datahub-0002-raw/Weather/weather_source/USA/Indianapolis/"
+    loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[:4] + "-"\
+    + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[4:6]
     loc = loc + "/forecast_data/" + TODAY_DATE + "/weathersource_daily_"
     loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d') + '.csv'
     temp_df.to_csv(loc)
 
 
-print("Saved location at aes-datahub-0001-raw/Weather/weather_source/usa/Indianapolis/")
+print("Saved location at aes-datahub-0002-raw/Weather/weather_source/usa/Indianapolis/")

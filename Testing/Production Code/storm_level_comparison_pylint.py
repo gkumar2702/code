@@ -10,8 +10,8 @@ import logging
 from datetime import datetime
 import pandas as pd
 import numpy as np
-from google.cloud import storage
 from pandas.io import gbq
+from google.cloud import storage
 import pandas_gbq as gbq
 
 
@@ -28,7 +28,7 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 CURRENT_DATE = datetime.today().strftime('%Y-%m-%d')
 print(CURRENT_DATE)
 CLIENT = storage.Client()
-BUCKET_NAME = 'aes-datahub-0001-raw'
+BUCKET_NAME = 'aes-datahub-0002-raw'
 BUCKET = CLIENT.get_bucket(BUCKET_NAME)
 
 BLOBS = BUCKET.list_blobs(prefix='OMS/'+CURRENT_DATE)
@@ -44,7 +44,7 @@ _MATCHING_LIVE_FACILITY = [s for s in _MATCHING_FACILITY if "HIS" in s]
 print(_MATCHING_LIVE_FACILITY)
 print('\n')
 
-BUCKET_NAME = 'gs://aes-datahub-0001-raw/'
+BUCKET_NAME = 'gs://aes-datahub-0002-raw/'
 
 print(CURRENT_DATE)
 print('\n')
@@ -159,9 +159,10 @@ DF_NUMERICAL.rename(columns={'DOWNSTREAM_CUST_QTY' : 'CUST_QTY'}, inplace=True)
 DF_NUMERICAL['INCIDENT_ID'] = DF_NUMERICAL['INCIDENT_ID'].astype(np.int64)
 DF_NUMERICAL['CIRCT_ID'] = DF_NUMERICAL['CIRCT_ID'].astype(np.int64)
 
-DF_NUMERICAL['OUTAGE_ID'] = DF_NUMERICAL.apply(lambda x: '%s%s%s%s\
-    ' % (x['INCIDENT_ID'], x['STRCTUR_NO\
-        '], x['CIRCT_ID'], x['DNI_EQUIP_TYPE']), axis=1)
+DF_NUMERICAL['OUTAGE_ID'] = DF_NUMERICAL.apply(lambda x: '%s%s%s%s' % (x['INCIDENT_ID'],
+                                                                       x['STRCTUR_NO'],
+                                                                       x['CIRCT_ID'],
+                                                                       x['DNI_EQUIP_TYPE']), axis=1)
 
 print("****QC Check****")
 print("Shape of Numerical columns at 'INCIDENT_ID','STRCTUR_NO','CIRCT_ID','DNI_EQUIP_TYPE' Level")
@@ -169,24 +170,22 @@ print(DF_NUMERICAL.shape)
 print('\n')
 
 DF_NUMERICAL['CREATION_DATETIME'] = pd.to_datetime(DF_NUMERICAL['CREATION_DATETIME'])
-DF_NUMERICAL['ENERGIZED_DATETIME'] = pd.to_datetime(DF_NUMERICAL['\
-    ENERGIZED_DATETIME'])
-DF_NUMERICAL['TTR'] = (DF_NUMERICAL['ENERGIZED_DATETIME'] - DF_NUMERICAL['\
-    CREATION_DATETIME']).astype('timedelta64[s]')
+DF_NUMERICAL['ENERGIZED_DATETIME'] = pd.to_datetime(DF_NUMERICAL['ENERGIZED_DATETIME'])
+DF_NUMERICAL['TTR'] = (DF_NUMERICAL['ENERGIZED_DATETIME'] - DF_NUMERICAL['CREATION_DATETIME']).astype('timedelta64[s]')
 DF_NUMERICAL['TTR'] = DF_NUMERICAL['TTR']/60
 
 DF_NUMERICAL['TTR'] = DF_NUMERICAL['TTR'].round(decimals=0)
 
 DF_NUMERICAL['Date'] = DF_NUMERICAL.CREATION_DATETIME.dt.date
 
-DF_FINAL = DF_NUMERICAL.groupby(['Date'], as_index=False).agg({'\
-    CUST_QTY':'sum', 'OUTAGE_ID':'count'})
+DF_FINAL = DF_NUMERICAL.groupby(['Date'], as_index=False).agg({'CUST_QTY':'sum',
+                                                               'OUTAGE_ID':'count'})
 
 DF_FINAL = DF_FINAL.rename(columns={'OUTAGE_ID':'Outages_recorded'})
 
-DF_PRED = 'SELECT * FROM aes-analytics-0001.mds_outage_restoration.IPL_Storm_Preparations'
+DF_PRED = 'SELECT * FROM aes-analytics-0002.mds_outage_restoration.IPL_Storm_Preparations'
 
-DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0001")
+DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0002")
 DF_PRED.drop_duplicates(inplace=True)
 
 DF_PRED['Date'] = pd.to_datetime(DF_PRED.Date).dt.date
@@ -194,7 +193,7 @@ DF_PRED['Date'] = pd.to_datetime(DF_PRED.Date).dt.date
 DF_MERGED = DF_FINAL.merge(DF_PRED, how='inner', left_on=['Date'], right_on='Date')
 
 DF_MERGED.to_gbq('mds_outage_restoration.IPL_Storm_Diagnostics',
-                 project_id='aes-analytics-0001',
+                 project_id='aes-analytics-0002',
                  chunksize=None, reauth=False, if_exists='replace',
                  auth_local_webserver=False, table_schema=None,
                  location=None, progress_bar=True, credentials=None
