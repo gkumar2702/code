@@ -57,7 +57,7 @@ UNIQUE = UNIQUE_DATES['Date'].to_list()
 logging.info(UNIQUE)
 
 
-STORM_PROFILES_LOCATION = BUCKET_NAME + '/Storm_Profiles/'
+STORM_PROFILES_LOCATION = BUCKET_NAME + '/Storm_Profiles_ws/'
 logging.info(STORM_PROFILES_LOCATION)
 STORM_PROFILES_FILES = []
 
@@ -236,7 +236,7 @@ DF_ADS_FINAL.rename({'CREATION_DATETIME' : 'Creation_Time',
                      'Predicted_ETR' : 'Estimated_Restoration_Time',
                      'Restoration_Period' : 'ETR', 'Cluster_ID' : 'Weather_Profile'}, axis=1, inplace=True)
 
-DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Predictions', project_id='aes-analytics-0002',
+DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Predictions_HPT', project_id='aes-analytics-0002',
                     chunksize=None, reauth=False, if_exists='append', auth_local_webserver=False,
                     table_schema=None, location=None, progress_bar=True, credentials=None)
 

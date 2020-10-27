@@ -10,7 +10,7 @@ from airflow.models import DAG
 # ===================Variables=================================
 ENV = Variable.get("env")
 print(ENV)
-JOB_NAME = 'outage-diagnostic-backend_pylint'
+JOB_NAME = 'outage-diagnostic-backend'
 PROJECT = 'aes-datahub-'+ENV
 COMPOSER_NAME = 'composer-'+ENV
 COMPOSER_BUCKET = 'us-east4-composer-0002-8d07c42c-bucket'

@@ -21,7 +21,7 @@ from airflow.operators.bash_operator  import BashOperator
 # ===================Variables=================================
 ENV = Variable.get("env")
 print(ENV)
-JOB_NAME = 'outage_storm_level_pylint'
+JOB_NAME = 'outage_storm_level'
 PROJECT = 'aes-datahub-'+ENV
 COMPOSER_NAME = 'composer-'+ENV
 BUCKET = 'aes-datahub-0002-curated'

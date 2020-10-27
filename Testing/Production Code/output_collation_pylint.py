@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 
 #Reading the input files
 
-PATH = "gs://us-east4-composer-0002-8d07c42c-bucket/data/Outage_restoration/IPL/"
+PATH = "='gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/"
 
 DF1 = pd.read_csv(PATH + "STORM_DURATION/Duration_Prediction.csv")
 DF2 = pd.read_csv(PATH + "NUMBER_OF_OUTAGES/Outages_Prediction.csv")

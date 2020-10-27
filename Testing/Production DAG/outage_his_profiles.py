@@ -10,7 +10,7 @@ from airflow.operators.bash_operator  import BashOperator
 # ===================Variables=================================
 ENV = Variable.get("env")
 print(ENV)
-JOB_NAME = 'outage-weathersource-his-profiles-0002_pylint'
+JOB_NAME = 'outage-weathersource-his-profiles-0002'
 PROJECT = 'aes-datahub-'+ENV
 COMPOSER_NAME = 'composer-'+ENV
 COMPOSER_BUCKET = 'us-east4-composer-0002-8d07c42c-bucket'

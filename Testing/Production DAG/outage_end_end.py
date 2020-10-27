@@ -42,7 +42,7 @@ from airflow.models import DAG
 # ===================Variables=================================
 ENV = Variable.get("env")
 print(ENV)
-JOB_NAME = 'outage_END_END_pylint'
+JOB_NAME = 'outage_END_END'
 PROJECT = 'aes-datahub-'+ENV
 COMPOSER_NAME = 'composer-'+ENV
 BUCKET = 'aes-analytics-0002-curated'
@@ -70,7 +70,7 @@ OUTPUT_DATE = datetime.datetime.now().strftime("%Y%m%d")
 YESTERDAY = datetime.datetime.combine(
     datetime.datetime.today() - datetime.timedelta(1),
     datetime.datetime.min.time())
-START_TIME = datetime.datetime(2020, 8, 25, 15, 00, 00)
+START_TIME = datetime.datetime(2020, 10, 27, 14, 00, 00)
 
 # =================== DAG Arguments =================================
 DEFAULT_ARGS = {

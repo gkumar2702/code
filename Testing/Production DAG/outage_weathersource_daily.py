@@ -20,7 +20,7 @@ from airflow.contrib.operators.gcs_to_bq import GoogleCloudStorageToBigQueryOper
 # ===================Variables=================================
 ENV = Variable.get("env")
 print(ENV)
-JOB_NAME = 'outage-weathersource-data-pull-0002_pylint'
+JOB_NAME = 'outage-weathersource-data-pull-0002'
 PROJECT = 'aes-datahub-'+ENV
 COMPOSER_NAME = 'composer-'+ENV
 COMPOSER_BUCKET = 'us-east4-composer-0002-8d07c42c-bucket'
