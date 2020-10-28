@@ -28,7 +28,7 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 CURRENT_DATE = datetime.today().strftime('%Y-%m-%d')
 print(CURRENT_DATE)
 CLIENT = storage.Client()
-BUCKET_NAME = 'aes-datahub-0002-raw'
+BUCKET_NAME = 'aes-datahub-0001-raw'
 BUCKET = CLIENT.get_bucket(BUCKET_NAME)
 
 BLOBS = BUCKET.list_blobs(prefix='OMS/'+CURRENT_DATE)
@@ -44,7 +44,7 @@ _MATCHING_LIVE_FACILITY = [s for s in _MATCHING_FACILITY if "HIS" in s]
 print(_MATCHING_LIVE_FACILITY)
 print('\n')
 
-BUCKET_NAME = 'gs://aes-datahub-0002-raw/'
+BUCKET_NAME = 'gs://aes-datahub-0001-raw/'
 
 print(CURRENT_DATE)
 print('\n')
@@ -183,9 +183,9 @@ DF_FINAL = DF_NUMERICAL.groupby(['Date'], as_index=False).agg({'CUST_QTY':'sum',
 
 DF_FINAL = DF_FINAL.rename(columns={'OUTAGE_ID':'Outages_recorded'})
 
-DF_PRED = 'SELECT * FROM aes-analytics-0002.mds_outage_restoration.IPL_Storm_Preparations'
+DF_PRED = 'SELECT * FROM aes-analytics-0001.mds_outage_restoration.IPL_Storm_Preparations'
 
-DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0002")
+DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0001")
 DF_PRED.drop_duplicates(inplace=True)
 
 DF_PRED['Date'] = pd.to_datetime(DF_PRED.Date).dt.date
@@ -193,7 +193,7 @@ DF_PRED['Date'] = pd.to_datetime(DF_PRED.Date).dt.date
 DF_MERGED = DF_FINAL.merge(DF_PRED, how='inner', left_on=['Date'], right_on='Date')
 
 DF_MERGED.to_gbq('mds_outage_restoration.IPL_Storm_Diagnostics',
-                 project_id='aes-analytics-0002',
+                 project_id='aes-analytics-0001',
                  chunksize=None, reauth=False, if_exists='replace',
                  auth_local_webserver=False, table_schema=None,
                  location=None, progress_bar=True, credentials=None

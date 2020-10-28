@@ -1,0 +1,7 @@
+numpy
+pandas
+html-testRunner
+contextlib2
+pyspark
+pylint
+apache-airflow

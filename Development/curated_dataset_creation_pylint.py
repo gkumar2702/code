@@ -1,18 +1,18 @@
 '''fILE TO CREATE CURATED DATASET'''
-import math
 from datetime import datetime
 from datetime import timedelta
-import logging
 import pandas as pd
 from pandas.io import gbq
+import logging
 logging.basicConfig(level=logging.INFO)
 from pyspark.context import SparkContext
 from pyspark.sql import SparkSession
 SC = SparkContext.getOrCreate()
 SPARK = SparkSession(SC)
 import geopy.distance
+import math
 # ## **Read OMS Weather Source curated dataset**
-BUCKET_NAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/Live_Data_Curation/'
+BUCKET_NAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/'
 DF_OMSDS = SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ",").load(BUCKET_NAME+'weather-source/OMS_weather-source_Live_Data.csv').toPandas()
 DF_OMSDS = DF_OMSDS.loc[:, ~DF_OMSDS.columns.str.contains('^Unnamed')]
 DF_OMSDS = DF_OMSDS.loc[:, ~DF_OMSDS.columns.str.contains('^_c0')]
@@ -63,8 +63,8 @@ DF_OMSDS.drop(['Center_LAT',
 DF_OMSDS.head()
 # ## **Read output dataset and filter for Predicted Flag**
 try:
-    DF_PRED = 'SELECT OUTAGE_ID FROM aes-analytics-0002.mds_outage_restoration.IPL_Predictions_HPT'
-    DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0002")
+    DF_PRED = 'SELECT OUTAGE_ID FROM aes-analytics-0001.mds_outage_restoration.IPL_Predictions'
+    DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0001")
     PREDICTIONS = list(DF_PRED['OUTAGE_ID'].unique())
     DF_OMSDS['OUTAGE_ID'] = DF_OMSDS['OUTAGE_ID'].astype(str)
     DF_OMSDS['OUTAGE_ID'] = DF_OMSDS['OUTAGE_ID'].str.replace(' ', '')
@@ -96,11 +96,9 @@ DF_NO_OF_OUTAGES.rename(columns={'POWER_OUT_CLUE_FLG':'NO_OF_POWER_OUT_CLUE_PER_
 
 logging.info(DF_NO_OF_OUTAGES.head())
 try:
-    DF_CLUE_COUNT = pd.read_csv('gs://aes-analytics-0002-curated/Outage_Restoration/Staging/'\
-                                'OMS_Clue_Flag_Record.csv')
+    DF_CLUE_COUNT = pd.read_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Staging/OMS_Clue_Flag_Record.csv')
 except:
-    DF_NO_OF_OUTAGES.to_csv('gs://aes-analytics-0002-curated/Outage_Restoration/Staging/'\
-                            'OMS_Clue_Flag_Record.csv', index=False)
+    DF_NO_OF_OUTAGES.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Staging/OMS_Clue_Flag_Record.csv', index=False)
 
 RECORD_DATE = (datetime.today()-timedelta(days=1)).date()
 logging.info(type(RECORD_DATE))
@@ -119,8 +117,7 @@ DF_CLUE_COUNT = DF_CLUE_COUNT.groupby(['Date'], as_index=False).agg({
     'NO_OF_WIRE_OCCURN_PER_DAY':'sum'})
 logging.info(type(DF_CLUE_COUNT.Date[0]))
 logging.info(DF_CLUE_COUNT.head())
-DF_CLUE_COUNT.to_csv('gs://aes-analytics-0002-curated/Outage_Restoration/Staging/'\
-                     'OMS_Clue_Flag_Record.csv', index=False)
+DF_CLUE_COUNT.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Staging/OMS_Clue_Flag_Record.csv', index=False)
 DF_FINAL = DF_FINAL.merge(DF_CLUE_COUNT, how='left', left_on=['Date'], right_on=['Date'])
 DF_FINAL.reset_index(drop=True, inplace=True)
 logging.info(DF_FINAL.head())
@@ -137,29 +134,29 @@ DF_FINAL.fillna(method='ffill', inplace=True)
 DF_FINAL['CITY_NAM'].fillna('NO_CITY', inplace=True)
 DF_FINAL['CREATION_DATETIME'] = DF_FINAL['CREATION_DATETIME'].apply(
     lambda row: row.strftime("%Y-%m-%d %H:%M:%S"))
-DF_FINAL['CREATION_DATETIME'] = pd.to_datetime(DF_FINAL['CREATION_DATETIME'], errors='coerce')
+DF_FINAL['CREATION_DATETIME'] = pd.to_datetime(DF_FINAL['CREATION_DATETIME'],errors='coerce')
 logging.info(DF_FINAL.head())
 # ## **Add outages in last N hours feature**
 RECORD_DATE_OUTAGE = (datetime.today()-timedelta(days=2)).date()
 logging.info(RECORD_DATE_OUTAGE)
 
 try:
-    PRED_OUTAGES = 'SELECT OUTAGE_ID, Creation_Time FROM aes-analytics-0002.mds_outage_restoration.IPL_Predictions_HPT where creation_time>='+"'"+str(RECORD_DATE_OUTAGE)+"'"
-    DF_PRED_OUTAGES = gbq.read_gbq(PRED_OUTAGES, project_id="aes-analytics-0002")
+    PRED_OUTAGES = 'SELECT OUTAGE_ID, Creation_Time FROM aes-analytics-0001.mds_outage_restoration.IPL_Predictions where creation_time>='+"'"+str(RECORD_DATE_OUTAGE)+"'"
+    DF_PRED_OUTAGES = gbq.read_gbq(PRED_OUTAGES, project_id="aes-analytics-0001")
     DF_PRED_OUTAGES.reset_index(drop=True, inplace=True)
 except:
     DF_PRED_OUTAGES = pd.DataFrame()
 
 logging.info(DF_PRED_OUTAGES.head())
-DF_PRED_OUTAGES['Creation_Time'] = pd.to_datetime(DF_PRED_OUTAGES['Creation_Time'], errors='coerce')
+DF_PRED_OUTAGES['Creation_Time'] = pd.to_datetime(DF_PRED_OUTAGES['Creation_Time'],errors='coerce')
 DF_PRED_OUTAGES['Creation_Time'] = DF_PRED_OUTAGES['Creation_Time'].apply(
     lambda row: row.strftime("%Y-%m-%d %H:%M:%S"))
-DF_PRED_OUTAGES['CREATION_DATETIME'] = pd.to_datetime(DF_PRED_OUTAGES['Creation_Time'], errors='coerce')
+DF_PRED_OUTAGES['CREATION_DATETIME'] = pd.to_datetime(DF_PRED_OUTAGES['Creation_Time'],errors='coerce')
 DF_PRED_OUTAGES.drop(['Creation_Time'], axis=1, inplace=True)
 
 DF_FINAL_OUTAGE_COUNT = DF_FINAL[['OUTAGE_ID', 'CREATION_DATETIME']]
 DF_FINAL_OUTAGE_COUNT = DF_FINAL_OUTAGE_COUNT.append(DF_PRED_OUTAGES)
-DF_FINAL_OUTAGE_COUNT.drop_duplicates(subset='OUTAGE_ID', keep='last', inplace=True)
+DF_FINAL_OUTAGE_COUNT.drop_duplicates(subset='OUTAGE_ID',keep='last',inplace=True)
 DF_FINAL_OUTAGE_COUNT.reset_index(inplace=True)
 
 def count_outage_minutes(group):
@@ -197,8 +194,5 @@ logging.disable(logging.CRITICAL)
 LIVE_OUTAGES['KVA_VAL'] = LIVE_OUTAGES['DOWNSTREAM_KVA_VAL']
 LIVE_OUTAGES.fillna(method='ffill', inplace=True)
 LIVE_OUTAGES = LIVE_OUTAGES.loc[:, ~LIVE_OUTAGES.columns.str.contains('^Unnamed')]
-LIVE_OUTAGES.to_csv("gs://aes-analytics-0002-curated/Outage_Restoration/Staging/"\
-                    "IPL_Live_Master_Dataset_ws.csv", index=False)
-LIVE_OUTAGES.to_csv("gs://aes-analytics-0002-curated/Outage_Restoration/Historical_Data/"\
-                    "BQ_backup/IPL_OMS_LIVE_Data_"+datetime.today().strftime('%Y%m%d%H%M')+".cs"\
-                    "v", index=False)
+LIVE_OUTAGES.to_csv("gs://aes-analytics-0001-curated/Outage_Restoration/Staging/IPL_Live_Master_Dataset_ws.csv", index=False)
+LIVE_OUTAGES.to_csv("gs://aes-analytics-0001-curated/Outage_Restoration/Historical_Data/BQ_backup/IPL_OMS_LIVE_Data_"+datetime.today().strftime('%Y%m%d%H%M')+".csv", index=False)

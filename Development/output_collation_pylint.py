@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 
 #Reading the input files
 
-PATH = "='gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/"
+PATH = "gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/"
 
 DF1 = pd.read_csv(PATH + "STORM_DURATION/Duration_Prediction.csv")
 DF2 = pd.read_csv(PATH + "NUMBER_OF_OUTAGES/Outages_Prediction.csv")
@@ -53,7 +53,8 @@ FINAL_DF = FINAL_DF.drop(['Today'], axis=1)
 FINAL_DF = FINAL_DF[['Date', 'Number_of_days_ahead', 'Storm_duration_in_hours',
                      'Number_of_outages', 'Customer_quantity', 'Recovery_duration_in_hours']]
 
+FINAL_DF['Number_of_outages'] = FINAL_DF['Number_of_outages'].round(0).astype(int)
 #Writing the output to the big query table
 
-FINAL_DF.to_gbq('mds_outage_restoration.IPL_Storm_Preparations', project_id='aes-analytics-0002',
+FINAL_DF.to_gbq('mds_outage_restoration.IPL_Storm_Preparations', project_id='aes-analytics-0001',
                 chunksize=None, reauth=False, if_exists='append', auth_local_webserver=False)
