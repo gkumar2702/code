@@ -11,7 +11,6 @@ pylint_check:
     changes:
       - Testing/Production DAG/*
       - Testing/Production Code/*
-      - .gitlab-ci.yml
       - requirements.txt
   before_script:
     - apt-get update
