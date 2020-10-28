@@ -24,11 +24,35 @@ pylint_check:
     - pip3 install -r requirements.txt
     - pwd
     - cd "Testing/Production Code"
-    - pylint --exit-zero curated_dataset_creation_pylint.py
-    - pylint --exit-zero curated_dataset_creation_pylint.py > lint_dag.txt
-    - score_dag=$(tail -2 lint_dag.txt | awk '{print $7}' | cut -d/ -f1)
-    - echo ${score_dag%.*}
-    - if [ ${score_dag%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero output_collation.py
+    - pylint --exit-zero output_collation.py > lint_sc_one.txt
+    - score_sc=$(tail -2 lint_sc_one.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero storm_level_comparison.py > lint_sc_two.txt
+    - score_sc=$(tail -2 lint_sc_two.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero weathersource_script.py	 > lint_sc_three.txt
+    - score_sc=$(tail -2 lint_sc_three.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* curated_dataset_creation_pylint.py > lint_sc_four.txt
+    - score_sc=$(tail -2 lint_sc_four.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* live_oms_preprocessing_pylint.py > lint_sc_five.txt
+    - score_sc=$(tail -2 lint_sc_five.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* load_predict_pylint.py > lint_sc_six.txt
+    - score_sc=$(tail -2 lint_sc_six.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* weather_source_data_collation_pylint.py > lint_sc_seven.txt
+    - score_sc=$(tail -2 lint_sc_seven.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
 
 deploying_dag_file_into_gcs-prod:
   stage: deploy_test
