@@ -41,16 +41,16 @@ pylint_check:
     - score_sc=$(tail -2 lint_sc_four.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
-    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* live_oms_preprocessing_pylint.py > lint_sc_five.txt
-    - score_sc=$(tail -2 lint_sc_five.txt | awk '{print $7}' | cut -d/ -f1)
-    - echo ${score_sc%.*}
-    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
     - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* load_predict_pylint.py > lint_sc_six.txt
     - score_sc=$(tail -2 lint_sc_six.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
     - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* weather_source_data_collation_pylint.py > lint_sc_seven.txt
     - score_sc=$(tail -2 lint_sc_seven.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* live_oms_preprocessing_pylint.py > lint_sc_five.txt
+    - score_sc=$(tail -2 lint_sc_five.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
 
