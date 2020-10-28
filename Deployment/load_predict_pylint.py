@@ -10,9 +10,9 @@ for restoration
 
 import pickle
 import logging
+from pytz import timezone
 import datetime as dt
 from datetime import datetime, date, timedelta
-from pytz import timezone
 import pandas as pd
 import numpy as np
 from pyspark.context import SparkContext
@@ -25,11 +25,11 @@ SPARK = SparkSession(SC)
 
 # ## **Read OMS Live Cureated Dataset**
 
-BUCKET_NAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/Staging/'
+BUCKET_NAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/'
 
 DF_ADS_FINAL = SPARK.read.format('CSV').option("header", "true").option(
-    "inferSchema", "true").option("delimiter", ",").load(
-        BUCKET_NAME + 'IPL_Live_Master_Dataset_ws.csv').toPandas()
+"inferSchema", "true").option("delimiter", ",").load(
+BUCKET_NAME + 'IPL_Live_Master_Dataset_ws.csv').toPandas()
 
 DF_ADS_FINAL = DF_ADS_FINAL.loc[:, ~DF_ADS_FINAL.columns.str.contains('^Unnamed')]
 logging.info(DF_ADS_FINAL.shape)
@@ -44,7 +44,7 @@ logging.info(DF_ADS_FINAL.isnull().values.any())
 # In[3]:
 
 
-BUCKET_NAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/Live_Data_Curation'
+BUCKET_NAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation'
 
 DF_ADS_FINAL['CREATION_DATETIME'] = pd.to_datetime(
     DF_ADS_FINAL['CREATION_DATETIME'], errors='coerce')
@@ -57,7 +57,7 @@ UNIQUE = UNIQUE_DATES['Date'].to_list()
 logging.info(UNIQUE)
 
 
-STORM_PROFILES_LOCATION = BUCKET_NAME + '/Storm_Profiles_ws/'
+STORM_PROFILES_LOCATION = BUCKET_NAME + '/Storm_Profiles/'
 logging.info(STORM_PROFILES_LOCATION)
 STORM_PROFILES_FILES = []
 
@@ -65,7 +65,7 @@ for i in UNIQUE:
     FILENAME = STORM_PROFILES_LOCATION + 'storm_profiles_{}.csv'.format(i)
     logging.info(FILENAME)
     STORM_PROFILES_FILES.append(SPARK.read.format('CSV').option("header", "true").option(
-        "inferSchema", "true").option("delimiter", ",").load(FILENAME).toPandas())
+    "inferSchema", "true").option("delimiter", ",").load(FILENAME).toPandas())
 
 STORMPROFILES_DF = SPARK.read.format('CSV').option("header", "true").option(
     "inferSchema", "true").option("delimiter", ",").load(STORM_PROFILES_LOCATION).toPandas()
@@ -127,7 +127,7 @@ logging.info(list(DF_ADS_FINAL.columns))
 
 # In[6]:
 
-RF_MODEL = pd.read_pickle(r'gs://aes-analytics-0002-curated/Outage_Restoration/Model_object/Random_Forest_GridSearch_09172020.pkl')
+RF_MODEL = pd.read_pickle(r'gs://aes-analytics-0001-curated/Outage_Restoration/Model_object/Random_Forest_GridSearch_09172020.pkl')
 
 logging.info("Model Loaded")
 
@@ -135,11 +135,11 @@ logging.info("Model Loaded")
 # In[7]:
 
 
-BUCKET_NAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/'
+BUCKET_NAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/'
 
 FEATURES_DF = SPARK.read.format('CSV').option("header", "true").option(
     "inferSchema", "true").option("delimiter", ",").load(
-        BUCKET_NAME + 'Model_object/Random_Forest_GridSearch_09172020.csv').toPandas()
+    BUCKET_NAME + 'Model_object/Random_Forest_GridSearch_09172020.csv').toPandas()
 
 FEATURES_DF = FEATURES_DF.loc[:, ~FEATURES_DF.columns.str.contains('_c0')]
 FEATURE_LIST = list(FEATURES_DF.Features_List)
@@ -194,10 +194,24 @@ Y_TEST_PRED = RF_MODEL.predict(DF_ADS_FINAL_V1)
 Y_TEST_PRED = np.exp(Y_TEST_PRED)
 Y_TEST_PRED = list(Y_TEST_PRED)
 
-DF_ADS_FINAL['Predicted_TTR'] = Y_TEST_PRED
-
 logging.info(Y_TEST_PRED)
 
+def business_layer_add_addtional_time(predicted_values):
+    new_pred_values = []
+    for i in range(len(predicted_values)):
+        if predicted_values[i] <= 1440:
+            new_pred_values.append(predicted_values[i] + 45)
+        elif predicted_values[i] > 1440:
+            new_pred_values.append(predicted_values[i] + 360)
+        else :
+            new_pred_values.append(predicted_values[i])
+        
+    return new_pred_values
+
+Y_TEST_PRED = business_layer_add_addtional_time(Y_TEST_PRED)
+logging.info(Y_TEST_PRED)
+
+DF_ADS_FINAL['Predicted_TTR'] = Y_TEST_PRED
 
 def created_predicted_etr(creation_datetime, time_in_minutes):
     """
@@ -234,18 +248,18 @@ DF_ADS_FINAL = DF_ADS_FINAL[['OUTAGE_ID', 'INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID
                              'Restoration_Period', 'Cluster_ID']]
 DF_ADS_FINAL.rename({'CREATION_DATETIME' : 'Creation_Time',
                      'Predicted_ETR' : 'Estimated_Restoration_Time',
-                     'Restoration_Period' : 'ETR', 'Cluster_ID' : 'Weather_Profile'}, axis=1, inplace=True)
+                     'Restoration_Period' : 'ETR','Cluster_ID' : 'Weather_Profile'}, axis=1, inplace=True)
 
-DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Predictions_HPT', project_id='aes-analytics-0002',
+DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Predictions', project_id='aes-analytics-0001',
                     chunksize=None, reauth=False, if_exists='append', auth_local_webserver=False,
                     table_schema=None, location=None, progress_bar=True, credentials=None)
 
-DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Live_Predictions', project_id='aes-analytics-0002',
+DF_ADS_FINAL.to_gbq('mds_outage_restoration.IPL_Live_Predictions', project_id='aes-analytics-0001',
                     chunksize=None, reauth=False, if_exists='replace', auth_local_webserver=False,
                     table_schema=None, location=None, progress_bar=True, credentials=None)
 
 DF_ADS_FINAL.to_csv(
-    'gs://aes-analytics-0002-curated/Outage_Restoration/OMS/ERT_live/ERT_predictions.csv')
+    'gs://aes-analytics-0001-curated/Outage_Restoration/OMS/ERT_live/ERT_predictions.csv')
 
 YEAR_MONTH = datetime.now(timezone('US/Eastern')).strftime('%Y-%m')
 CURRENT_DATE = datetime.now(timezone('US/Eastern')).strftime('%Y-%m-%d')
@@ -255,7 +269,7 @@ logging.info(CURRENT_DATE)
 logging.info(CURRENT_DATE_HOUR)
 logging.disable(logging.CRITICAL)
 
-FILENAME = 'gs://aes-analytics-0002-curated/Outage_Restoration/OMS/Deliverables/ERTs/{}/{}/TTR_predictions_{}.csv'.format(YEAR_MONTH, CURRENT_DATE, CURRENT_DATE_HOUR)
+FILENAME = 'gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Deliverables/ERTs/{}/{}/TTR_predictions_{}.csv'.format(YEAR_MONTH, CURRENT_DATE, CURRENT_DATE_HOUR)
 logging.info(FILENAME)
 
 DF_ADS_FINAL.to_csv(FILENAME, index=False)
