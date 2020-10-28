@@ -1,0 +1,78 @@
+
+##Loading the required packages 
+library('SparkR')
+sparkR.session()
+library(dplyr)
+library(magrittr)
+library(Matrix)
+library(glmnet)
+library(plyr)
+library(stats)
+
+
+#loading all required dates to variables
+today <- format(Sys.time(),"%Y-%m-%d")
+tomorrow <- format(as.Date(Sys.time(),format="%Y%m%d")+1,"%Y%m%d")
+day_after <- format(as.Date(Sys.time(),format="%Y%m%d")+2,"%Y%m%d")
+year_month <- format(Sys.time(),"%Y-%m")
+
+system('gsutil cp gs://aes-analytics-0001-curated/Outage_Restoration/Model_object/model_stepwise_2020_07_21_18_59_49.RDS /root/')
+##Read the Required Files
+Weather_data <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Deliverables/Outage_Duration/",year_month,"/",today,"/","PCA1.csv"),source = "csv", header="true",inferschema="true")
+Weather_data <- SparkR :: collect(Weather_data)
+Weather_data <- na.omit(Weather_data)
+
+Weather_data1 <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Deliverables/Outage_Duration/",year_month,"/",today,"/","PCA2.csv"),source = "csv", header="true",inferschema="true")
+Weather_data1 <- SparkR :: collect(Weather_data1)
+Weather_data1 <- na.omit(Weather_data1)
+
+
+##Reading the RDS 
+#model_step <-readRDS('C:/Users/kakaraparthi.b/Desktop/AES/Outage/New_Pipeline/model_stepwise_2020_07_21_18_59_49.RDS')
+model_step <-readRDS('/root/model_stepwise_2020_07_21_18_59_49.RDS')
+
+model.function <- function(Weather_data) {
+  
+df <- Weather_data
+
+a <- unique(df$Date)
+
+##Dropping unneccessary columns
+df <- df[, !(colnames(df) %in% c("Date"))]
+
+##Running model for prediction
+stepwise <- model_step$predict(model_step$model,df)
+
+##taking log as values were scaled before pca
+stepwise <-exp(stepwise) 
+
+#creating column to store output in df
+df$predicted_Number_of_OUTAGES<-stepwise
+
+#creating column to store the timestamp
+df$Date <- a
+
+#Keeping the required Columns 
+keeps <- c("Date", "predicted_Number_of_OUTAGES")
+df <- df[keeps]
+
+#Final df
+df
+
+}
+
+
+##Calling  model.function
+weather <- model.function(Weather_data)
+weather_nextday <- model.function(Weather_data1)
+
+#merging the data into one dataframe
+m1 <- merge(weather_nextday, weather, all = TRUE)
+
+#Writing to GCS
+write.csv(m1,paste0('/root/Outages_Prediction','.csv',sep=""),row.names=FALSE)
+root_file<-paste0(' /root/Outages_Prediction','.csv',sep="")
+output_folder<-paste0('gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Deliverables/Outage_Duration/',year_month,'/',today,'/')
+system(paste0("gsutil cp ",root_file," ",output_folder))
+output_live<-paste0('gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/NUMBER_OF_OUTAGES/')
+system(paste0("gsutil cp ",root_file," ",output_live))
