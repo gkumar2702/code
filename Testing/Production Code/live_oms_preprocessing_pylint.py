@@ -90,18 +90,18 @@ CURRENT_FILE_READ = pd.DataFrame({'Filepath' : FILE_READ_LIST})
 
 try:
     LAST_FILE_READ = pd.read_csv(
-	'gs://aes-analytics-0002-curated/Outage_Restoration/Staging/Last_OMS_File.csv')
+    'gs://aes-analytics-0002-curated/Outage_Restoration/Staging/Last_OMS_File.csv')
 except:
     LAST_FILE_READ = pd.DataFrame()
     CURRENT_FILE_READ.to_csv(
-	'gs://aes-analytics-0002-curated/Outage_Restoration/Staging/Last_OMS_File.csv', index=False)
+    'gs://aes-analytics-0002-curated/Outage_Restoration/Staging/Last_OMS_File.csv', index=False)
 
 if LAST_FILE_READ.empty:
     print("New Files Path's have been stored")
 else:
     if ((CURRENT_FILE_READ.Filepath[0] == LAST_FILE_READ.Filepath[0]) and (
-	CURRENT_FILE_READ.Filepath[1] == LAST_FILE_READ.Filepath[1]) and (
-	    CURRENT_FILE_READ.Filepath[2] == LAST_FILE_READ.Filepath[2])):
+    CURRENT_FILE_READ.Filepath[1] == LAST_FILE_READ.Filepath[1]) and (
+        CURRENT_FILE_READ.Filepath[2] == LAST_FILE_READ.Filepath[2])):
 
         raise Exception('No new input data files from OMS')
 
@@ -316,8 +316,8 @@ DF_INCIDENTDEVICELOCATION_.CITY_NAM = DF_INCIDENTDEVICELOCATION_.CITY_NAM.apply(
 # city treatment
 def cat_city_treat(group):
     '''
-	Input - Grouped CITY_NAME
-	Output - SIngle CITY_NAME
+    Input - Grouped CITY_NAME
+    Output - SIngle CITY_NAME
     '''
     if group.CITY_NAM.nunique() > 1:
         x = group[group.CITY_NAM != 'NO_CITY'].CITY_NAM.unique()
@@ -506,16 +506,16 @@ DF_ADS.drop(['Hour'], axis=1, inplace=True)
 
 def change_to_loc(df):
     '''
-	Input - GEO_X_COORD, GEO_Y_COORD
-	Output - LAT, LONG coordinates of the goe_x and geo_y values
-	'''
+    Input - GEO_X_COORD, GEO_Y_COORD
+    Output - LAT, LONG coordinates of the goe_x and geo_y values
+    '''
     demnorthing = df.GEO_Y_COORD
     demeasting = df.GEO_X_COORD
     northing = float(demnorthing) * 0.3048
     easting = float(demeasting) * 0.3048
     om = (northing - 250000 + 4151863.7425) / 6367236.89768
     fo = om + (math.sin(om) * math.cos(om)) * (0.005022893948 + 0.000029370625 * math.pow(math.cos(om), 2) +
-    	0.000000235059 * math.pow(math.cos(om), 4) + 0.000000002181 * math.pow(math.cos(om), 6))
+        0.000000235059 * math.pow(math.cos(om), 4) + 0.000000002181 * math.pow(math.cos(om), 6))
     tf = math.sin(fo) / math.cos(fo)
     nf2 = 0.00673949677548 * math.pow(math.cos(fo), 2)
     rn = 0.9999666667 * 6378137 / math.pow((1 - 0.0066943800229034 * math.pow(math.sin(fo), 2)), 0.5)
@@ -546,8 +546,8 @@ DF_ADS = pd.merge(DF_ADS, DF_GEO_LOCATION, on=['LOCATION_ID', 'INCIDENT_ID'], ho
 # function to add zone feature to the ads according to geo coordinates
 def add_zone_feature(df):
     '''
-	Input - dataframe with LAT, LONG columns
-	Output - ZONES which the LAT, LONG belong to
+    Input - dataframe with LAT, LONG columns
+    Output - ZONES which the LAT, LONG belong to
     '''
     center_lat = 39.7684
     center_long = -86.1581
@@ -635,8 +635,8 @@ DF_ADS['Marker20_LONG'] = -86.2743
 # calculate distance from 2 lat long
 def haversine(p1, p2):
     '''
-	Input - point1 and point2 in LAT, LONG
-	Output - Minimum diatance from marker
+    Input - point1 and point2 in LAT, LONG
+    Output - Minimum diatance from marker
     '''
     R = 6371     # earth radius in km
     p1 = [math.radians(v) for v in p1]
@@ -655,8 +655,8 @@ def minimum_distance(lat, long, marker1_lat, marker2_lat, marker3_lat, marker4_l
                      marker3_long, marker4_long, marker5_long, marker6_long, marker7_long, marker8_long, marker9_long, marker10_long, marker11_long, marker12_long, marker13_long,
                      marker14_long, marker15_long, marker16_long, marker17_long, marker18_long, marker19_long, marker20_long):
     '''
-	Input - latitude, longitude of outages and different marker locations
-	Output - minimum distance and index of marker location
+    Input - latitude, longitude of outages and different marker locations
+    Output - minimum distance and index of marker location
     '''
     dist1 = haversine((lat, long), (marker1_lat, marker1_long))
     dist2 = haversine((lat, long), (marker2_lat, marker2_long))
@@ -713,8 +713,8 @@ logging.info(DF_ADS.shape)
 # ## **Add dispatch Area Location**
 def cal_distance_from_dipatch_area(lat, long):
     '''
-	Input - Latitude, Logitude of an outages
-	Output - Minimum distance from a dispatch location and its index
+    Input - Latitude, Logitude of an outages
+    Output - Minimum distance from a dispatch location and its index
     '''
     if(math.isnan(lat)) | (math.isnan(long)):
         return None, None
@@ -733,7 +733,7 @@ def cal_distance_from_dipatch_area(lat, long):
     
         return min_value, min_index+1
 
-		
+        
 DF_ADS['Min_Distance'], DF_ADS['Grid'] = zip(*DF_ADS.apply(lambda row: cal_distance_from_dipatch_area(row['LAT'], row['LONG']), axis=1))
 
 
@@ -756,7 +756,7 @@ def map_grid_to_location(row):
         value = 'SOUTH'
     else:
         value = 'NO_LOCATION'
-	
+    
     return value
 
 
@@ -770,8 +770,8 @@ logging.info(DF_ADS.head())
 # ## **QC Check**
 def check_level(group):
     '''
-	checks level of the table created
-	'''
+    checks level of the table created
+    '''
     print(len(group))
 
 logging.info(DF_ADS.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE']).apply(check_level))
