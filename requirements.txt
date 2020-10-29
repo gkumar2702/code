@@ -4,4 +4,5 @@ html-testRunner
 contextlib2
 pyspark
 pylint
+astroid==2.2.5
 apache-airflow
