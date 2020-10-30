@@ -1,5 +1,5 @@
 stages:
-  - deploy_0001
+  - deploy_test
 before_script:
   - export TZ='Asia/Kolkata'
 deploying_dag_file_into_gcs-prod:
