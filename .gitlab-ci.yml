@@ -11,8 +11,8 @@ pylint_check:
     changes:
       - Scheduling/*
       - Development/*
-      - Deployment/*
-      - .gitlab-ci.yml
+#      - Deployment/*
+#      - .gitlab-ci.yml
   before_script:
     - apt-get update
     - apt-get install default-jdk -y
@@ -99,7 +99,7 @@ deploying_files_into_gcs-prod:
     - master
   only:
     changes:
-      - .gitlab-ci.yml
+#      - .gitlab-ci.yml
   script:
     - apt-get install python3-openssl -qy
     - echo 'nameserver 1.1.1.1'  > /etc/resolv.conf
