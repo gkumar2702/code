@@ -1,9 +1,98 @@
 stages:
-  - deploy_test
+  - pylint_check
+  - deploy_prod
 before_script:
   - export TZ='Asia/Kolkata'
-deploying_dag_file_into_gcs-prod:
-  stage: deploy_test
+pylint_check:
+  image: python:3.7-stretch
+  stage: pylint_check
+  tags: ["stages"]
+  only:
+    changes:
+      - Scheduling/*
+      - Development/*
+      - Deployment/*
+      - .gitlab-ci.yml
+  before_script:
+    - apt-get update
+    - apt-get install default-jdk -y
+  script:
+    - pip install -r requirements.txt
+    - pylint --version
+    - pwd
+    - cd Scheduling
+    - pylint --exit-zero outage_storm_level.py > lint_dag1.txt
+    - score_dag=$(tail -2 lint_dag1.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_dag%.*}
+    - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero outage_diagnostic_view.py > lint_dag2.txt
+    - score_dag=$(tail -2 lint_dag2.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_dag%.*}
+    - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero outage_end_end.py > lint_dag3.txt
+    - score_dag=$(tail -2 lint_dag3.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_dag%.*}
+    - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero outage_his_profiles.py > lint_dag4.txt
+    - score_dag=$(tail -2 lint_dag4.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_dag%.*}
+    - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero outage_weathersource_daily.py > lint_dag5.txt
+    - score_dag=$(tail -2 lint_dag5.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_dag%.*}
+    - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero outage_file_check.py > lint_dag6.txt
+    - score_dag=$(tail -2 lint_dag6.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_dag%.*}
+    - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - cd ../
+    - pwd
+    - cd Development/
+    - pylint --exit-zero output_collation_pylint.py > lint_sc_one.txt
+    - score_sc=$(tail -2 lint_sc_one.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero storm_level_comparison_pylint.py > lint_sc_two.txt
+    - score_sc=$(tail -2 lint_sc_two.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero weathersource_script_pylint.py	 > lint_sc_three.txt
+    - score_sc=$(tail -2 lint_sc_three.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint --exit-zero diagnostic_view_pylint.py > lint_sc1.txt
+    - score_sc=$(tail -2 lint_sc1.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* curated_dataset_creation_pylint.py > lint_sc_four.txt
+    - score_sc=$(tail -2 lint_sc_four.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)' --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* live_oms_preprocessing_pylint.py > lint_sc_five.txt
+    - score_sc=$(tail -2 lint_sc_five.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* weather_source_data_collation_pylint.py > lint_sc_seven.txt
+    - score_sc=$(tail -2 lint_sc_seven.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -ge 0 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* oms_filechecker.py > lint_sc_eight.txt
+    - score_sc=$(tail -2 lint_sc_eight.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -ge 0 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* pca_storm_level.py > lint_sc_nine.txt
+    - score_sc=$(tail -2 lint_sc_nine.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -ge 0 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+    - cd ..
+    - cd Deployment
+    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* load_predict_pylint.py > lint_sc_ten.txt
+    - score_sc=$(tail -2 lint_sc_ten.txt | awk '{print $7}' | cut -d/ -f1)
+    - echo ${score_sc%.*}
+    - if [ ${score_sc%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
+
+deploying_files_into_gcs-prod:
+  stage: deploy_prod
   image: google/cloud-sdk
   tags: ["stages"]
   only: 
@@ -19,5 +108,5 @@ deploying_dag_file_into_gcs-prod:
     - echo $composer_key_0001 | base64 -d > ./creds/composer_key_0001.json
     - export GOOGLE_CREDENTIALS=$(cat ./creds/composer_key_0001.json)
     - gcloud auth activate-service-account $composer_sa_0001 --key-file=./creds/composer_key_0001.json
-    - gsutil rsync "Development"  gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/Python_scripts/Gitlab_test
+    - gsutil rsync "Deployment"  gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/Python_scripts/Gitlab_test
 
