@@ -67,7 +67,7 @@ with DAG(
     PCA = DataProcPySparkOperator(
         task_id='PCA_calcualtion',
         main='gs://us-east4-composer-0001-40ca8a74-bucket/data'\
-            '/Outage_restoration/IPL/Python_scripts/OUTAGE_script.py',
+            '/Outage_restoration/IPL/Python_scripts/pca_storm_level.py',
         arguments=None,
         archives=None,
         pyfiles=None,

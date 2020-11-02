@@ -6,14 +6,12 @@ This code is used to take live data from OMS (Outage Manament System)
 And create analytical dataset
 '''
 
-import os
 import math
 import logging
-import warnings
 import operator
 import time
 import datetime as dt
-from datetime import date, timedelta, datetime
+from datetime import date, datetime
 import pandas as pd
 import numpy as np
 from pandas.io import gbq
@@ -90,19 +88,19 @@ CURRENT_FILE_READ = pd.DataFrame({'Filepath' : FILE_READ_LIST})
 
 try:
     LAST_FILE_READ = pd.read_csv(
-	'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/Last_OMS_File.csv')
+        'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/Last_OMS_File.csv')
 except:
     LAST_FILE_READ = pd.DataFrame()
     CURRENT_FILE_READ.to_csv(
-	'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/Last_OMS_File.csv', index=False)
+        'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/Last_OMS_File.csv', index=False)
 
 if LAST_FILE_READ.empty:
     print("New Files Path's have been stored")
 else:
     if ((CURRENT_FILE_READ.Filepath[0] == LAST_FILE_READ.Filepath[0]) and (
-	CURRENT_FILE_READ.Filepath[1] == LAST_FILE_READ.Filepath[1]) and (
-	CURRENT_FILE_READ.Filepath[2] == LAST_FILE_READ.Filepath[2])):
-		 
+    CURRENT_FILE_READ.Filepath[1] == LAST_FILE_READ.Filepath[1]) and (
+        CURRENT_FILE_READ.Filepath[2] == LAST_FILE_READ.Filepath[2])):
+
         raise Exception('No new input data files from OMS')
 
 CURRENT_FILE_READ.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Staging/Last_OMS_File.csv', index=False)
@@ -155,20 +153,20 @@ DF_LOCATION_ = LIVE_LOCATION.copy(deep=True)
 DF_INCIDENT_ = LIVE_INCIDENT.copy(deep=True)
 
 
-# subset location tables to get required columns for analysis 
+# subset location tables to get required columns for analysis
 DF_LOCATION_SUBSET = DF_LOCATION_[['INCIDENT_ID', 'LOCATION_ID', 'MAJ_OTG_ID',
-    'CITY_NAM', 'OCCURN_CD', 'CAUSE_CD', 'ENERGIZED_DATETIME']]
+                                   'CITY_NAM', 'OCCURN_CD', 'CAUSE_CD', 'ENERGIZED_DATETIME']]
 
 # data quality qc
 logging.info("****QC Check****")
 logging.info("INCIDENT_DEVICE table before and after dropping duplicates at INCIDENT_ID, LOCATION_ID")
 logging.info("%s %s", len(DF_INCIDENT_DEVICE_[['INCIDENT_ID', 'LOCATION_ID']]),
-    len(DF_INCIDENT_DEVICE_[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
+             len(DF_INCIDENT_DEVICE_[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
 logging.info("\n")
 logging.info("****QC Check****")
 logging.info("LOCATION table before and after dropping duplicates at INCIDENT_ID, LOCATION_ID")
 logging.info("%s %s", len(DF_LOCATION_SUBSET[['INCIDENT_ID', 'LOCATION_ID']]),
-    len(DF_LOCATION_SUBSET[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
+             len(DF_LOCATION_SUBSET[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
 logging.info("\n")
 
 DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENT_DEVICE_, DF_LOCATION_SUBSET,
@@ -177,7 +175,7 @@ DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENT_DEVICE_, DF_LOCATION_SUBSET,
 logging.info("****QC Check****")
 logging.info("INICDENT_DEVICE, LOCATION table merged before and after dropping duplicates at INCIDENT_ID, LOCATION_ID")
 logging.info("%s %s", len(DF_INCIDENTDEVICELOCATION_[['INCIDENT_ID', 'LOCATION_ID']]),
-                      len(DF_INCIDENTDEVICELOCATION_[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
+             len(DF_INCIDENTDEVICELOCATION_[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
 logging.info("\n")
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
@@ -257,7 +255,7 @@ logging.info(DF_INCIDENTDEVICELOCATION_.shape)
 logging.info("\n")
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
-if SHAPE == 0:        
+if SHAPE == 0:
     raise Exception('ADS contains 0 rows after OCCURN_CD filter')
 
 
@@ -265,9 +263,9 @@ if SHAPE == 0:
 ## START ADS CREATION FOR NUMERICAL COLUMNS AT INCIDENT LEVEL
 
 # 1.1 Aggregate numerical columns at INCIDENT_ID level to keep all unique INCIDNET_ID's
-DF_NUMERICAL = DF_INCIDENTDEVICELOCATION_.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], as_index=False).agg({'CALL_QTY' : 'sum', 
-    'DOWNSTREAM_CUST_QTY' : 'sum', 'KVA_VAL' : 'max', 'DOWNSTREAM_KVA_VAL' : 'max', 'INCIDENT_DEVICE_ID' : 'max', 'CREATION_DATETIME' : 'min', 
-    'SUBST_ID' : 'min', 'LOCATION_ID' : 'max', 'ENERGIZED_DATETIME' : 'max'})
+DF_NUMERICAL = DF_INCIDENTDEVICELOCATION_.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], as_index=False).agg({'CALL_QTY' : 'sum',
+    'DOWNSTREAM_CUST_QTY' : 'sum', 'KVA_VAL' : 'max', 'DOWNSTREAM_KVA_VAL' : 'max', 'INCIDENT_DEVICE_ID' : 'max', 'CREATION_DATETIME' : 'min',
+                                                                                                                                    'SUBST_ID' : 'min', 'LOCATION_ID' : 'max', 'ENERGIZED_DATETIME' : 'max'})
 
 DF_NUMERICAL.rename(columns={'DOWNSTREAM_CUST_QTY' : 'CUST_QTY'}, inplace=True)
 
@@ -276,9 +274,9 @@ DF_NUMERICAL['CIRCT_ID'] = DF_NUMERICAL['CIRCT_ID'].astype(np.int64)
 
 DF_NUMERICAL['OUTAGE_ID'] = DF_NUMERICAL.apply(lambda x: '%s%s%s%s' % (x['INCIDENT_ID'],
                                                                        x['STRCTUR_NO'],
-																	   x['CIRCT_ID'],
-																	   x['DNI_EQUIP_TYPE']),
-																	   axis=1)
+                                                                       x['CIRCT_ID'],
+                                                                       x['DNI_EQUIP_TYPE']),
+                                                                       axis=1)
 
 logging.info("****QC Check****")
 logging.info("Shape of Numerical columns at 'INCIDENT_ID','STRCTUR_NO','CIRCT_ID','DNI_EQUIP_TYPE' Level")
@@ -286,7 +284,7 @@ logging.info(DF_NUMERICAL.shape)
 logging.info('\n')
 
 SHAPE = DF_NUMERICAL.shape[0]
-if SHAPE == 0:        
+if SHAPE == 0:
     raise Exception('ADS contains 0 rows after OCCURN_CD filter')
 
 
@@ -468,7 +466,7 @@ CAT_LIST = ['POLE_CLUE_FLG', 'PART_LIGHT_CLUE_FLG', 'EMERGENCY_CLUE_FLG', 'POWER
 CAT_LIST = CAT_LIST+PRIORITY_LIST
 
 DF_INCIDENTDEVICELOCATION_CAT = DF_INCIDENTDEVICELOCATION_.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], as_index=False)[CAT_LIST].agg('sum')
-    
+
 DUMMY_COL = list(DF_INCIDENTDEVICELOCATION_CAT.columns)
 DUMMY_COL.remove('INCIDENT_ID')
 DUMMY_COL.remove('STRCTUR_NO')
@@ -491,7 +489,7 @@ logging.info(DF_ADS.shape)
 logging.info('\n')
 
 SHAPE = DF_ADS.shape[0]
-if SHAPE == 0:        
+if SHAPE == 0:
     raise Exception('ADS contains 0 rows after OCCURN_CD filter')
 
 # ## **Add cyclicity according to hour**
@@ -523,7 +521,7 @@ def change_to_loc(df):
     b2 = -0.5 * tf * (1 + nf2)
     b4 = -(1 / 12) * (5 + (3 * math.pow(tf, 2)) + (nf2 * (1 - 9 * math.pow(tf, 2)) - 4 * math.pow(nf2, 2)))
     b6 = (1 / 360) * (61 + (90 * math.pow(tf, 2)) + (45 * math.pow(tf, 4)) +
-    	(nf2 * (46 - (252 * math.pow(tf, 2)) - (90 * math.pow(tf, 4)))))
+                      (nf2 * (46 - (252 * math.pow(tf, 2)) - (90 * math.pow(tf, 4)))))
     lat = fo + b2 * math.pow(q, 2) * (1 + math.pow(q, 2) * (b4 + b6 * math.pow(q, 2)))
     b3 = -(1 / 6) * (1 + 2 * math.pow(tf, 2) + nf2)
     b5 = (1 / 120) * (5 + 28 * math.pow(tf, 2) + 24 * math.pow(tf, 4) + nf2 * (6 + 8 * math.pow(tf, 2)))
@@ -547,12 +545,12 @@ DF_ADS = pd.merge(DF_ADS, DF_GEO_LOCATION, on=['LOCATION_ID', 'INCIDENT_ID'], ho
 def add_zone_feature(df):
     '''
 	Input - dataframe with LAT, LONG columns
-	Output - ZONES which the LAT, LONG belong to 
+	Output - ZONES which the LAT, LONG belong to
     '''
     center_lat = 39.7684
     center_long = -86.1581
     zone = ''
-    
+
     if float(df['LAT']) < center_lat:
         if float(df['LONG']) < center_long:
             zone = 'ZONE1'
@@ -563,7 +561,7 @@ def add_zone_feature(df):
             zone = 'ZONE4'
         else:
             zone = 'ZONE3'
-    
+
     return zone
 
 
@@ -590,7 +588,7 @@ DF_ADS[LIST_COLUMNS] = DF_ADS[LIST_COLUMNS].apply(pd.to_numeric, errors='coerce'
 DF_ADS['LAT'] = DF_ADS['LAT'].ffill()
 DF_ADS['LONG'] = DF_ADS['LONG'].ffill()
 
-DF_ADS['Marker1_LAT'] = 39.9613 
+DF_ADS['Marker1_LAT'] = 39.9613
 DF_ADS['Marker2_LAT'] = 39.8971
 DF_ADS['Marker3_LAT'] = 39.9060
 DF_ADS['Marker4_LAT'] = 39.9024
@@ -611,7 +609,7 @@ DF_ADS['Marker18_LAT'] = 39.5909
 DF_ADS['Marker19_LAT'] = 39.5295
 DF_ADS['Marker20_LAT'] = 39.5475
 
-DF_ADS['Marker1_LONG'] = -86.4034 
+DF_ADS['Marker1_LONG'] = -86.4034
 DF_ADS['Marker2_LONG'] = -86.3045
 DF_ADS['Marker3_LONG'] = -86.2001
 DF_ADS['Marker4_LONG'] = -86.0738
@@ -632,7 +630,7 @@ DF_ADS['Marker18_LONG'] = -86.4212
 DF_ADS['Marker19_LONG'] = -86.5874
 DF_ADS['Marker20_LONG'] = -86.2743
 
-# calculate distance from 2 lat long 
+# calculate distance from 2 lat long
 def haversine(p1, p2):
     '''
 	Input - point1 and point2 in LAT, LONG
@@ -641,12 +639,12 @@ def haversine(p1, p2):
     R = 6371     # earth radius in km
     p1 = [math.radians(v) for v in p1]
     p2 = [math.radians(v) for v in p2]
-    
+
     d_lat = p2[0] - p1[0]
     d_lng = p2[1] - p1[1]
     a = math.pow(math.sin(d_lat / 2), 2) + math.cos(p1[0]) * math.cos(p2[0]) * math.pow(math.sin(d_lng / 2), 2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
+
     return R * c   # returns distance between p1 and p2 in km
 
 # calculate minimum distance
@@ -678,31 +676,40 @@ def minimum_distance(lat, long, marker1_lat, marker2_lat, marker3_lat, marker4_l
     dist18 = haversine((lat, long), (marker18_lat, marker18_long))
     dist19 = haversine((lat, long), (marker19_lat, marker19_long))
     dist20 = haversine((lat, long), (marker20_lat, marker20_long))
-    
+
     dist_list = [dist1, dist2, dist3, dist4, dist5, dist6, dist7, dist8, dist9, dist10, dist11, dist12, dist13, dist14, dist15, dist16, dist17, dist18, dist19, dist20]
-    
+
     min_index, min_value = min(enumerate(dist_list), key=operator.itemgetter(1))
-    
+
     if(math.isnan(lat)) | (math.isnan(long)):
         return None, None
     else:
         return min_value, min_index+1
 
 DF_ADS['Min_Distance'], DF_ADS['Marker_Location'] = zip(*DF_ADS.apply(lambda row: minimum_distance(row['LAT'], row['LONG'], row['Marker1_LAT'], row['Marker2_LAT'],
-    row['Marker3_LAT'], row['Marker4_LAT'], row['Marker5_LAT'], row['Marker6_LAT'], row['Marker7_LAT'], row['Marker8_LAT'], row['Marker9_LAT'], row['Marker10_LAT'], 
-    row['Marker11_LAT'], row['Marker12_LAT'], row['Marker13_LAT'], row['Marker14_LAT'], row['Marker15_LAT'], row['Marker16_LAT'], row['Marker17_LAT'], 
-    row['Marker18_LAT'], row['Marker19_LAT'], row['Marker20_LAT'], row['Marker1_LONG'], row['Marker2_LONG'], row['Marker3_LONG'], row['Marker4_LONG'], 
-    row['Marker5_LONG'], row['Marker6_LONG'], row['Marker7_LONG'], row['Marker8_LONG'], row['Marker9_LONG'], row['Marker10_LONG'], row['Marker11_LONG'],
-    row['Marker12_LONG'], row['Marker13_LONG'], row['Marker14_LONG'], row['Marker15_LONG'], row['Marker16_LONG'], row['Marker17_LONG'], row['Marker18_LONG'], 
+    row['Marker3_LAT'], row['Marker4_LAT'], row['Marker5_LAT'], row['Marker6_LAT'],
+    row['Marker7_LAT'], row['Marker8_LAT'], row['Marker9_LAT'], row['Marker10_LAT'],
+    row['Marker11_LAT'], row['Marker12_LAT'], row['Marker13_LAT'], row['Marker14_LAT'],
+    row['Marker15_LAT'], row['Marker16_LAT'], row['Marker17_LAT'],
+    row['Marker18_LAT'], row['Marker19_LAT'], row['Marker20_LAT'], row['Marker1_LONG'],
+    row['Marker2_LONG'], row['Marker3_LONG'], row['Marker4_LONG'],
+    row['Marker5_LONG'], row['Marker6_LONG'], row['Marker7_LONG'], row['Marker8_LONG'],
+    row['Marker9_LONG'], row['Marker10_LONG'], row['Marker11_LONG'],
+    row['Marker12_LONG'], row['Marker13_LONG'], row['Marker14_LONG'], row['Marker15_LONG'],
+    row['Marker16_LONG'], row['Marker17_LONG'], row['Marker18_LONG'],
     row['Marker19_LONG'], row['Marker20_LONG']), axis=1))
 
 
 
-DF_ADS.drop(['Marker1_LAT', 'Marker2_LAT', 'Marker3_LAT', 'Marker4_LAT', 'Marker5_LAT', 'Marker6_LAT', 'Marker7_LAT', 'Marker8_LAT', 'Marker9_LAT', 'Marker10_LAT',
-            'Marker11_LAT', 'Marker12_LAT', 'Marker13_LAT', 'Marker14_LAT', 'Marker15_LAT', 'Marker16_LAT', 'Marker17_LAT', 'Marker18_LAT', 'Marker19_LAT', 'Marker20_LAT',
-            'Marker1_LONG', 'Marker2_LONG', 'Marker3_LONG', 'Marker4_LONG', 'Marker5_LONG', 'Marker6_LONG', 'Marker7_LONG', 'Marker8_LONG', 'Marker9_LONG', 'Marker10_LONG',
-            'Marker11_LONG', 'Marker12_LONG', 'Marker13_LONG', 'Marker14_LONG', 'Marker15_LONG', 'Marker16_LONG', 'Marker17_LONG', 'Marker18_LONG', 'Marker19_LONG',
-            'Marker20_LONG'], axis=1, inplace=True)
+DF_ADS.drop(['Marker1_LAT', 'Marker2_LAT', 'Marker3_LAT', 'Marker4_LAT', 'Marker5_LAT',
+             'Marker6_LAT', 'Marker7_LAT', 'Marker8_LAT', 'Marker9_LAT', 'Marker10_LAT',
+             'Marker11_LAT', 'Marker12_LAT', 'Marker13_LAT', 'Marker14_LAT', 'Marker15_LAT',
+             'Marker16_LAT', 'Marker17_LAT', 'Marker18_LAT', 'Marker19_LAT', 'Marker20_LAT',
+             'Marker1_LONG', 'Marker2_LONG', 'Marker3_LONG', 'Marker4_LONG', 'Marker5_LONG',
+             'Marker6_LONG', 'Marker7_LONG', 'Marker8_LONG', 'Marker9_LONG', 'Marker10_LONG',
+             'Marker11_LONG', 'Marker12_LONG', 'Marker13_LONG', 'Marker14_LONG', 'Marker15_LONG',
+             'Marker16_LONG', 'Marker17_LONG', 'Marker18_LONG', 'Marker19_LONG',
+             'Marker20_LONG'], axis=1, inplace=True)
 
 DF_ADS['Marker_Location'] = 'Marker '+DF_ADS['Marker_Location'].astype(str)
 
@@ -726,14 +733,14 @@ def cal_distance_from_dipatch_area(lat, long):
         dist_english = geopy.distance.distance(coords1, [39.7880, -86.0868]).miles
         dist_wii = geopy.distance.distance(coords1, [39.7003, -86.2303]).miles
         dist_south = geopy.distance.distance(coords1, [39.7003, -86.0834]).miles
-    
+
         dist_list = [dist_34, dist_arl, dist_mill, dist_english, dist_wii, dist_south]
 
         min_index, min_value = min(enumerate(dist_list), key=operator.itemgetter(1))
-    
+
         return min_value, min_index+1
 
-		
+
 DF_ADS['Min_Distance'], DF_ADS['Grid'] = zip(*DF_ADS.apply(lambda row: cal_distance_from_dipatch_area(row['LAT'], row['LONG']), axis=1))
 
 
@@ -756,7 +763,7 @@ def map_grid_to_location(row):
         value = 'SOUTH'
     else:
         value = 'NO_LOCATION'
-	
+
     return value
 
 
@@ -774,7 +781,8 @@ def check_level(group):
 	'''
     print(len(group))
 
-logging.info(DF_ADS.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE']).apply(check_level))
+logging.info(DF_ADS.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID',
+                             'DNI_EQUIP_TYPE']).apply(check_level))
 logging.info('\n')
 logging.info("No of NA's if any")
 logging.info('\n')
@@ -784,4 +792,5 @@ DF_ADS.fillna(method='ffill', inplace=True)
 
 # ## **Write table to OMS Live Mapped Dataset to Curated OMS**
 logging.disable(logging.CRITICAL)
-DF_ADS.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/OMS/OMS_Live_Data.csv')
+DF_ADS.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/'\
+              'OMS/OMS_Live_Data.csv')

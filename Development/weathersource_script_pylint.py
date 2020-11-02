@@ -160,7 +160,17 @@ WAETHERSOURCE_DF_HIS.reset_index(drop=True, inplace=True)
 WAETHERSOURCE_DF_FOR.reset_index(drop=True, inplace=True)
 print("successful extraction")
 
+print(WAETHERSOURCE_DF_HIS.timestamp.unique())
+print(WAETHERSOURCE_DF_FOR['timestamp'].unique())
 
+WAETHERSOURCE_DF_HIS['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_HIS['timestamp'])
+WAETHERSOURCE_DF_FOR['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_FOR['timestamp'])
+
+WAETHERSOURCE_DF_HIS['timestamp'] = (WAETHERSOURCE_DF_HIS['timestamp']).apply(
+    lambda row: row.strftime("%Y-%m-%d %H:%M:%S"))
+
+WAETHERSOURCE_DF_FOR['timestamp'] = (WAETHERSOURCE_DF_FOR['timestamp']).apply(
+    lambda row: row.strftime("%Y-%m-%d %H:%M:%S"))
 
 WAETHERSOURCE_DF_HIS['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_HIS['timestamp']).dt.date
 WAETHERSOURCE_DF_FOR['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_FOR['timestamp']).dt.date

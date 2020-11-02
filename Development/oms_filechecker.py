@@ -2,11 +2,11 @@
 import logging
 import time
 from datetime import datetime
+import pandas as pd
 from pyspark.context import SparkContext
 from pyspark.sql import SparkSession
-import pandas as pd
-logging.basicConfig(level=logging.INFO)
 from google.cloud import storage
+logging.basicConfig(level=logging.INFO)
 SC = SparkContext.getOrCreate()
 SPARK = SparkSession(SC)
 

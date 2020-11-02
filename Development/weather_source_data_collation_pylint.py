@@ -9,8 +9,8 @@ import datetime as dt
 import logging
 import pandas as pd
 import numpy as np
-from google.cloud import storage
 from pandas.io import gbq
+from google.cloud import storage
 from pyspark.context import SparkContext
 from pyspark.sql import SQLContext, SparkSession
 
@@ -49,12 +49,12 @@ WS_LOCATION = 'gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis
 WSFILES = []
 
 for i in UNIQUE:
-  year_month = pd.to_datetime(i).strftime('%Y-%m')
-  current_date = pd.to_datetime(i).strftime('%Y-%m-%d')
-  filename = WS_LOCATION+year_month+'/forecast_data/'+current_date+'/weathersource_daily_{}.csv'.format(i)
-  logging.info(filename)
-  WSFILES.append(SPARK.read.format('CSV').option("header","true").option("inferSchema","true").option("delimiter",",").load(
-    filename).toPandas())
+    year_month = pd.to_datetime(i).strftime('%Y-%m')
+    current_date = pd.to_datetime(i).strftime('%Y-%m-%d')
+    filename = WS_LOCATION+year_month+'/forecast_data/'+current_date+'/weathersource_daily_{}.csv'.format(i)
+    logging.info(filename)
+    WSFILES.append(SPARK.read.format('CSV').option("header", "true").option(
+        "inferSchema", "true").option("delimiter", ",").load(filename).toPandas())
 
 WS_DF = pd.concat(WSFILES)
 WS_DF.reset_index(drop=True, inplace=True)
@@ -111,30 +111,30 @@ logging.info(DF_OMS_LIVE.shape)
 # ## **Renaming weather attributes**
 
 def create_wind_direction(x_wind_direction):
-   '''
+    '''
 Input - Wind direction columns
 Output - Wind direction classes
    '''
-   if(x_wind_direction >= 1) & (x_wind_direction < 45):
-       direction = 'N-E-N'
-   elif(x_wind_direction >= 45) & (x_wind_direction < 90):
-       direction = 'N-E-E'
-   elif(x_wind_direction >= 90) & (x_wind_direction < 180):
-       direction = 'S-E-E'
-   elif(x_wind_direction >= 135) & (x_wind_direction < 180):
-       direction = 'S-E-S'
-   elif(x_wind_direction >= 180) & (x_wind_direction < 225):
-       direction = 'S-W-S'
-   elif(x_wind_direction >= 225) & (x_wind_direction < 270):
-       direction = 'S-W-W'
-   elif(x_wind_direction >= 270) & (x_wind_direction < 315):
-       direction = 'N-W-W'
-   elif(x_wind_direction >= 315) & (x_wind_direction < 360):
-       direction = 'N-W-N'
-   else:
-       direction = None
+    if(x_wind_direction >= 1) & (x_wind_direction < 45):
+        direction = 'N-E-N'
+    elif(x_wind_direction >= 45) & (x_wind_direction < 90):
+        direction = 'N-E-E'
+    elif(x_wind_direction >= 90) & (x_wind_direction < 180):
+        direction = 'S-E-E'
+    elif(x_wind_direction >= 135) & (x_wind_direction < 180):
+        direction = 'S-E-S'
+    elif(x_wind_direction >= 180) & (x_wind_direction < 225):
+        direction = 'S-W-S'
+    elif(x_wind_direction >= 225) & (x_wind_direction < 270):
+        direction = 'S-W-W'
+    elif(x_wind_direction >= 270) & (x_wind_direction < 315):
+        direction = 'N-W-W'
+    elif(x_wind_direction >= 315) & (x_wind_direction < 360):
+        direction = 'N-W-N'
+    else:
+        direction = None
 
-   return direction
+    return direction
 
 DF_OMS_LIVE['WIND_DIRECTION'] = DF_OMS_LIVE['windDirAvg'].apply(create_wind_direction)
 
@@ -158,4 +158,5 @@ DF_OMS_LIVE.drop(['weekday'], axis=1, inplace=True)
 
 logging.disable(logging.CRITICAL)
 DF_OMS_LIVE.drop(['Location'], axis=1, inplace=True)
-DF_OMS_LIVE.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/weather-source/OMS_weather-source_Live_Data.csv', index=False)
+DF_OMS_LIVE.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/'\
+                   'weather-source/OMS_weather-source_Live_Data.csv', index=False)
