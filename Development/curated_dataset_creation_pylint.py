@@ -107,7 +107,6 @@ logging.info(type(DF_CLUE_COUNT.Date[0]))
 DF_CLUE_COUNT_CURRENT = DF_CLUE_COUNT[DF_CLUE_COUNT.Date >= RECORD_DATE]
 DF_CLUE_COUNT_CURRENT.reset_index(drop=True, inplace=True)
 logging.info(DF_CLUE_COUNT_CURRENT.empty)
-logging.info(type(DF_CLUE_COUNT_CURRENT.Date[0]))
 DF_CLUE_COUNT = DF_CLUE_COUNT.append(DF_NO_OF_OUTAGES)
 DF_CLUE_COUNT = DF_CLUE_COUNT.groupby(['Date'], as_index=False).agg({
     'NO_OF_POWER_OUT_CLUE_PER_DAY':'sum',

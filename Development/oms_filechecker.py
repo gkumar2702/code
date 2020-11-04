@@ -2,11 +2,11 @@
 import logging
 import time
 from datetime import datetime
-import pandas as pd
 from pyspark.context import SparkContext
 from pyspark.sql import SparkSession
-from google.cloud import storage
+import pandas as pd
 logging.basicConfig(level=logging.INFO)
+from google.cloud import storage
 SC = SparkContext.getOrCreate()
 SPARK = SparkSession(SC)
 
@@ -79,7 +79,7 @@ try:
 
     FILE_READ_LIST = [BUCKET_NAME + _MATCHING_LIVE_INCIDENT_DEVICE[-1], BUCKET_NAME +
                       _MATCHING_LIVE_INCIDENT[-1], BUCKET_NAME + _MATCHING_LIVE_LOCATION[-1]]
-    CURRENT_FILE_READ = pd.DataFrame({'Filepath' : file_read_list})
+    CURRENT_FILE_READ = pd.DataFrame({'Filepath' : FILE_READ_LIST})
 
     CURRENT_FILE_READ.head()
 except:

@@ -127,7 +127,7 @@ print("Libraries and functions loaded")
 
 
 
-TODAY_DATE = datetime.now(timezone('US/Eastern'))
+TODAY_DATE = datetime.now()
 FORECAST_NEXT_DATE = (TODAY_DATE + timedelta(days=1)).strftime('%Y-%m-%d')
 FORECAST_END_DATE = (TODAY_DATE + timedelta(days=2)).strftime('%Y-%m-%d')
 PAST_START_DATE = (TODAY_DATE - timedelta(days=2)).strftime('%Y-%m-%d')
