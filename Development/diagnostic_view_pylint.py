@@ -304,7 +304,7 @@ DF_FINAL = DF_DIAG.append(DF_DIAGNOSTIC)
 
 ## Dropping duplicates and storing the recent entries
 
-DF_FINAL.drop_duplicates(subset=['OUTAGE_ID'], keep='first', inplace=True)
+DF_FINAL.drop_duplicates(subset=['OUTAGE_ID'], keep='last', inplace=True)
 DF_FINAL.reset_index(drop=True, inplace=True)
 
 DF_FINAL['TTR'] = DF_FINAL['TTR'].astype(np.float64)
