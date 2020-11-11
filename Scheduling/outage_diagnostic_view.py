@@ -40,7 +40,7 @@ DEFAULT_ARGS = {
 with DAG(
         dag_id=JOB_NAME,
         default_args=DEFAULT_ARGS,
-        schedule_interval='0 6 * * *'
+        schedule_interval='0 7 * * *'
 ) as dag:
     DIAGNOSTIC = DataProcPySparkOperator(task_id='Diagnostic_Daily_Append',
                                          main='/home/airflow/gcs/data/Outage_restoration/'\
