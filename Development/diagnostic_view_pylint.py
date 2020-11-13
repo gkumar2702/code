@@ -1,7 +1,7 @@
 """
 Authored: Sudheer
 
-Updated: 2 Sep 2020
+Updated: 11 Nov 2020
 
 Description: Backend script to merge actuals with predicted values of the outages
 and write as a BQ table
@@ -173,7 +173,8 @@ DF_NUMERICAL = FACILITY.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID',
                                                                     'CREATION_DATETIME' : 'min',
                                                                     'ENERGIZED_DATETIME':'max',
                                                                     'SUBST_ID': 'min',
-                                                                    'MAJ_OTG_ID' : 'max'})
+                                                                    'MAJ_OTG_ID' : 'max',
+                                                                    'ETR_DATETIME' : 'max'})
 
 DF_NUMERICAL.rename(columns={'DOWNSTREAM_CUST_QTY' : 'CUST_QTY'}, inplace=True)
 
@@ -195,9 +196,14 @@ logging.info('\n')
 
 DF_NUMERICAL['CREATION_DATETIME'] = pd.to_datetime(DF_NUMERICAL['CREATION_DATETIME'])
 DF_NUMERICAL['ENERGIZED_DATETIME'] = pd.to_datetime(DF_NUMERICAL['ENERGIZED_DATETIME'])
+DF_NUMERICAL['ETR_DATETIME'] = pd.to_datetime(DF_NUMERICAL['ETR_DATETIME'])
 DF_NUMERICAL['TTR'] = DF_NUMERICAL['ENERGIZED_DATETIME'] - DF_NUMERICAL['CREATION_DATETIME']
 DF_NUMERICAL['TTR'] = DF_NUMERICAL['TTR'].astype('timedelta64[s]')
 DF_NUMERICAL['TTR'] = DF_NUMERICAL['TTR']/60
+
+DF_NUMERICAL['OMS_ETR'] = DF_NUMERICAL['ETR_DATETIME'] - DF_NUMERICAL['CREATION_DATETIME']
+DF_NUMERICAL['OMS_ETR'] = DF_NUMERICAL['OMS_ETR'].astype('timedelta64[s]')
+DF_NUMERICAL['OMS_ETR'] = DF_NUMERICAL['OMS_ETR']/60
 
 
 # QC checks every value should be one
@@ -206,7 +212,7 @@ DF_NUMERICAL['TTR'] = DF_NUMERICAL['TTR']/60
 
 
 DF_NUMERICAL['TTR'] = DF_NUMERICAL['TTR'].round(decimals=0)
-
+DF_NUMERICAL['OMS_ETR'] = DF_NUMERICAL['OMS_ETR'].round(decimals=0)
 
 # In[111]:
 
@@ -236,8 +242,21 @@ DF_FINAL = DF_NUMERICAL[['OUTAGE_ID',
                          'CREATION_DATETIME',
                          'ENERGIZED_DATETIME',
                          'TTR']]
-DF_FINAL.drop_duplicates(subset='OUTAGE_ID', inplace=True)
 
+DF_FINAL.drop_duplicates(subset='OUTAGE_ID',keep='last', inplace=True)
+
+DF_ETR = DF_NUMERICAL[['OUTAGE_ID',
+                         'INCIDENT_ID',
+                         'STRCTUR_NO',
+                         'CIRCT_ID',
+                         'DNI_EQUIP_TYPE',
+                         'CREATION_DATETIME',
+                         'ENERGIZED_DATETIME',
+                         'TTR',
+                         'ETR_DATETIME',
+                         'OMS_ETR']]
+
+DF_ETR.drop_duplicates(subset='OUTAGE_ID',keep='last', inplace=True)
 # In[114]:
 
 
@@ -267,8 +286,8 @@ DF_MERGED = DF_FINAL.merge(DF_PRED, how='left', left_on=['OUTAGE_ID'],
 
 
 # In[119]:
-
-
+#Accounting for missing outages in the live pipeline
+#DF_MERGED = DF_MERGED[DF_MERGED.TTR>30]
 DF_DIAGNOSTIC = DF_MERGED.dropna()
 
 
@@ -285,6 +304,15 @@ DF_DIAGNOSTIC.drop(DF_DIAGNOSTIC.filter(regex='_y').columns, axis=1, inplace=Tru
 DF_DIAGNOSTIC['TTR'] = DF_DIAGNOSTIC['TTR'].astype(np.int64)
 DF_DIAGNOSTIC['ETR'] = DF_DIAGNOSTIC['ETR'].astype(np.int64)
 
+## Adding OMS ETRs to the diagnostic
+DF_ETR_BS = DF_ETR[DF_ETR.OMS_ETR>=0]
+DF_ETR_STORM = DF_ETR[DF_ETR.OMS_ETR<0]
+DF_ETR_STORM.OMS_ETR = np.nan
+DF_ETR_FINAL = DF_ETR_BS.append(DF_ETR_STORM)
+DF_DIAGNOSTIC = DF_DIAGNOSTIC.merge(DF_ETR_FINAL[['OUTAGE_ID', 'ETR_DATETIME', 'OMS_ETR']],
+                          how='left', left_on=['OUTAGE_ID'],
+                          right_on=['OUTAGE_ID'])
+
 #reading the diagnostic table
 DF_DIAG = 'SELECT * FROM aes-analytics-0001.mds_outage_restoration.IPL_Diagnostic_View'
 DF_DIAG = gbq.read_gbq(DF_DIAG, project_id="aes-analytics-0001")
@@ -298,7 +326,7 @@ shape = DF_DIAGNOSTIC.shape[0]
 if shape == 0:
     raise Exception('No new Additions, All outages are already fed in the previos run')
 
-##Appending the two tables
+#Appending the two tables
 
 DF_FINAL = DF_DIAG.append(DF_DIAGNOSTIC)
 
@@ -307,8 +335,11 @@ DF_FINAL = DF_DIAG.append(DF_DIAGNOSTIC)
 DF_FINAL.drop_duplicates(subset=['OUTAGE_ID'], keep='last', inplace=True)
 DF_FINAL.reset_index(drop=True, inplace=True)
 
+##Keeping the data type consistent
 DF_FINAL['TTR'] = DF_FINAL['TTR'].astype(np.float64)
 DF_FINAL['ETR'] = DF_FINAL['ETR'].astype(np.float64)
+DF_FINAL['OMS_ETR'] = DF_FINAL['OMS_ETR'].astype(np.float64)
+
 # # **Write table to Big Query**
 
 DF_FINAL.to_gbq('mds_outage_restoration.IPL_Diagnostic_View', project_id='aes-analytics-0001',
