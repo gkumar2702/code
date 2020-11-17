@@ -196,16 +196,8 @@ DF_MERGED = DF_FINAL.merge(DF_PRED, how='inner', left_on=['Date'], right_on='Dat
 
 DF_MERGED['Date'] = DF_MERGED['Date'].astype(str)
 
-DF_STORM = 'SELECT * FROM aes-analytics-0001.mds_outage_restoration.IPL_Storm_Diagnostics'
 
-DF_STORM = gbq.read_gbq(DF_STORM, project_id="aes-analytics-0001")
-DF_STORM.drop_duplicates(inplace=True)
-
-DF_FINAL = DF_STORM.append(DF_MERGED)
-
-DF_FINAL.drop_duplicates(subset=['Date'],keep='last',inplace=True)
-
-DF_FINAL.to_gbq('mds_outage_restoration.IPL_Storm_Diagnostics',
+DF_MERGED.to_gbq('mds_outage_restoration.IPL_Storm_Diagnostics',
                  project_id='aes-analytics-0001',
                  chunksize=None, reauth=False, if_exists='replace',
                  auth_local_webserver=False, table_schema=None,
