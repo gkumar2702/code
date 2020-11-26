@@ -20,14 +20,18 @@ Across all model levels, training was done on actual data (actual weather variab
 6.	Generalized Additive Model Regression (GAM)<br>
 
 ### Milestones Delivered
--	Dashboard for weather profiles created<br>
--	Live pipeline for day ahead and two day ahead predictions automation
+-	Dashboard for Weather Event Monitoring <br>
+-	Storm Level Models to Predict No of customers and No of Outages during a weather events automation <br>
+-   One day ahead and two ahead predictions of Weather profiles across  <br>
+-   Weather Profiles model for day ahead and two day ahead predictions automation for various landmarks in Indianaspolis <br>
+-   Estimated Restoration Time prediction model giving predictions for Outages coming across Outage Management System (OMS) <br>
+-   ETR and Storm Model Diagnostic with dahsboard using business firendly metrics on a daily basis
 
 ### Architecture Diagram
 ![Architecture diagram](https://gitlab.com/aes-digital/musigma/outage-restoration/-/raw/master/Project%20Details/Architecture_end_end.jpg?raw=true)
 
 ### Configuration file
-config0002.ini is the file used for saving the configurations of all the scripts that run in the pipeline.
+config0002new.ini is the file used for saving the configurations of all the scripts that run in the ETR pipeline.
 Each section in the configuration file point to a python script as below:
 ##### Settings:
 project_id – Name of the Project<br>
