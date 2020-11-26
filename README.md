@@ -37,9 +37,9 @@ curated_bucket_name – Folder of curated ADS<br>
 curated_bucket_location – Path of curated ADS<br>
 bq_curated_dataset – BigQuery table for saving curated ADS<br>
 bq_ipl_live_predictions- BigQuery table for saving live predictions<br>
-bq_ipl_predictions = BigQuery table containing historic predictions<br>
+bq_ipl_predictions - BigQuery table containing historic predictions<br>
 ###### Live OMS:
-oms_last_file_read_name = Name of last file read<br>
+oms_last_file_read_name - Name of last file read<br>
 occurn_remov – removing redundant files<br>
 cat_list – List of categorical columns<br>
 marker_location_csv – Location of Marker Location CSV<br>
@@ -55,7 +55,7 @@ oms_live_path – Path for writing the file after adding weather features<br>
 curated_data_staging_path – Path to read the dataset with added weather features<br>
 ipl_predictions_query – Query to fetch outages from IPL Predictions BigQuery table<br>
 clue_count_csv – Location of clue count CSV<br>
-flag_list = List of features containing Flag<br>
+flag_list - List of features containing Flag<br>
 pred_outages_query – Query to fetch historical predictions from IPL Predictions BigQuery table<br>
 live_outages_backup_csv – Path to save a backup of the dataset as CSV<br>
 live_outages_path – Path to write the curated dataset<br>
