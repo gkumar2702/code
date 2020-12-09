@@ -57,7 +57,7 @@ pylint_check:
     - score_sc=$(tail -2 lint_sc_one.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
-    - pylint --exit-zero storm_level_comparison_pylint.py > lint_sc_two.txt
+    - pylint --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)' storm_level_comparison_pylint.py > lint_sc_two.txt
     - score_sc=$(tail -2 lint_sc_two.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
