@@ -1,15 +1,6 @@
 ### Problem Definition
 The project is a two-pronged effort, led by **the Indianapolis, Indiana and Dayton, Ohio Trade & Distribution teams**.  This section consists of analysis involved in optimizing scheduling of repairs, preparation for storm events, and the estimation of **times to restoration.** 
 
-### Approach
-#### Live data Preprocessing
-Preprocessing is the point at which the team has decided what assumptions will be used in the creation of the curated dataset and filters are created to reflect these assumptions in the analytical dataset. Live data is fetched from various folders and collated into one dataset.
-#### Data Collation
-Here we add weather features to the dataset using Location and Date. It is fetched from an external weather source on daily forecast level.
-#### Curated Dataset creation
-More of the required features are added to the dataset. Here the features are engineered in order to fit the model requirement. Feature selection is the process where you statistically or manually select those features which contribute the most to your prediction variable, only the features required for the model are processed for next steps.
-#### Load and Predict
-In this step, we take the curated data set consisting of live outage data and make predictions on them and save it in a bigquery table.
 ### Model Building
 Across all model levels, training was done on actual data (actual weather variables, actual consumer demand, actual number of outages etc.). The following model were used
 1.	Linear Regression<br> 
@@ -18,6 +9,8 @@ Across all model levels, training was done on actual data (actual weather variab
 4.	Robust Regression <br>
 5.	Multivariate Adaptive Regression model (MARS) <br>
 6.	Generalized Additive Model Regression (GAM)<br>
+7.  Light GBM
+8.  Catboost model
 
 ### Milestones Delivered
 -	Dashboard for Weather Event Monitoring <br>
