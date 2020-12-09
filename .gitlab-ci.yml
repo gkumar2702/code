@@ -104,6 +104,7 @@ pylint_check:
 deploying_files_into_gcs-prod:
   stage: deploy_prod
   image: google/cloud-sdk
+  when: Manual
   tags: ["stages"]
   only: 
     - master
