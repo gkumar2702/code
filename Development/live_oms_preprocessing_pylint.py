@@ -1,271 +1,269 @@
-
-# ## **Import Required Packages**
-
 '''
-This code is used to take live data from OMS (Outage Manament System)
-And create analytical dataset
+Author - Mu Sigma
+Updated: 09 Dec 2020
+Version: 2
+Tasks - This code is used to take live data from OMS (Outage Manament System)
+And clean, filter, add different features & create analytical dataset
+Final CSV written in STAGING PATH present in config0001
+Schedule - 32 mins
 '''
 
+# standard library imports
+import ast
 import os
 import math
+import json
 import logging
 import warnings
 import operator
 import time
 import datetime as dt
 from datetime import date, timedelta, datetime
+from configparser import ConfigParser, ExtendedInterpolation
 import pandas as pd
 import numpy as np
 from pandas.io import gbq
+
+# third party imports
 from google.cloud import storage
-
 import geopy.distance
-from pyspark.context import SparkContext
-from pyspark.sql import SQLContext, SparkSession
-
-logging.basicConfig(level=logging.INFO)
-
-SC = SparkContext.getOrCreate()
-SPARK = SparkSession(SC)
 
 
-#  ## **Check all Live Files present in Bucket**
+# setup logs
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO,
+                    datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# read config file
+CONFIGPARSER = ConfigParser(interpolation=ExtendedInterpolation())
+CONFIGPARSER.read('confignew0001.ini')
+logging.info('Config File Loaded')
+logging.info('Config File Sections %s', CONFIGPARSER.sections())
+
+def QC_CHECK_SHAPE_AND_COLUMNS(df):
+    '''
+    Input - Dataframe with operations/addtion of features/columns or joins performed
+    Output - Log Info using shape of dataframe and columns present
+    '''
+    logging.info('****QC Check**** \n')
+    logging.info('Shape of the DataFrame %s \n', df.shape)
+    logging.info('Columns present in the DataFrame: %s \n', list(df.columns))
+    return
+
+
+## **Check all Live Files present in Bucket**
+# sleep for 2 mins to avoid missing batch raw oms files if they are late by seconds
 time.sleep(120)
-CURRENT_DATE = datetime.today().strftime('%Y-%m-%d')
-logging.info(CURRENT_DATE)
-CLIENT = storage.Client()
-BUCKET_NAME = 'aes-datahub-0001-raw'
-BUCKET = CLIENT.get_bucket(BUCKET_NAME)
 
+CURRENT_DATE = datetime.today().strftime('%Y-%m-%d')
+logging.info('Todays Date: %s', CURRENT_DATE)
+CLIENT = storage.Client()
+
+BUCKET_NAME = CONFIGPARSER['SETTINGS']['RAW_BUCKET_NAME']
+logging.info('BUCKET_NAME: %s \n', BUCKET_NAME)
+BUCKET = CLIENT.get_bucket(BUCKET_NAME)
 BLOBS = BUCKET.list_blobs(prefix='OMS/'+CURRENT_DATE)
 DIRLIST = []
 
 for blob in BLOBS:
     DIRLIST.append(str(blob.name))
 
-#string matching to read tables
+# string matching to read live tables
 _MATCHING_INCIDENT = [s for s in DIRLIST if "INCIDENT_IPL" in s]
 _MATCHING_LIVE_INCIDENT = [s for s in _MATCHING_INCIDENT if "HIS" not in s]
-logging.info(_MATCHING_LIVE_INCIDENT)
-logging.info('\n')
-
+logging.info('LIVE INCIDENT TABLES: %s \n',_MATCHING_LIVE_INCIDENT)
 _MATCHING_INCIDENT_DEVICE = [s for s in DIRLIST if "INCIDENT_DEVICE_IPL" in s]
 _MATCHING_LIVE_INCIDENT_DEVICE = [s for s in _MATCHING_INCIDENT_DEVICE if "HIS" not in s]
-logging.info(_MATCHING_LIVE_INCIDENT_DEVICE)
-logging.info('\n')
-
+logging.info('LIVE INCIDENT DEVICE TABLES: %s \n', _MATCHING_LIVE_INCIDENT_DEVICE)
 _MATCHING_LOCATION = [s for s in DIRLIST if "LOCATION_IPL" in s]
 _MATCHING_LIVE_LOCATION = [s for s in _MATCHING_LOCATION if "HIS" not in s]
-logging.info(_MATCHING_LIVE_LOCATION)
+logging.info('LIVE LOCATION TABLES: %s \n', _MATCHING_LIVE_LOCATION)
 
 
-# ## **Read Live Files in Buckets**
+## **Read Live Files in Buckets**
+RAW_BUCKET_LOCATION = CONFIGPARSER['SETTINGS']['RAW_BUCKET_LOCATION']
+logging.info('Raw Bucket Location %s \n', RAW_BUCKET_LOCATION)
+logging.info('Todays Date %s \n,', CURRENT_DATE)
 
-BUCKET_NAME = 'gs://aes-datahub-0001-raw/'
+LIVE_INCIDENT_DEVICE = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION,
+                                   _MATCHING_LIVE_INCIDENT_DEVICE[-1]))
+logging.info('Live LIVE_INCIDENT_DEVICE_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT_DEVICE[-1]))
 
-logging.info(CURRENT_DATE)
-logging.info('\n')
+LIVE_INCIDENT = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]))
+logging.info('Live LIVE_INCIDENT_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]))
 
-LIVE_INCIDENT_DEVICE = SPARK.read.format('CSV').option(
-    "header", "true").option("inferSchema", "true").option("delimiter", ",").load(
-        BUCKET_NAME+_MATCHING_LIVE_INCIDENT_DEVICE[-1]).toPandas()
-logging.info(BUCKET_NAME+_MATCHING_LIVE_INCIDENT_DEVICE[-1])
+LIVE_LOCATION = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_LOCATION[-1]))
+logging.info('Live LIVE_LOCATION_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_LOCATION[-1]))
 
-LIVE_INCIDENT = SPARK.read.format('CSV').option(
-    "header", "true").option("inferSchema", "true").option("delimiter", ",").load(
-        BUCKET_NAME+_MATCHING_LIVE_INCIDENT[-1]).toPandas()
-logging.info(BUCKET_NAME+_MATCHING_LIVE_INCIDENT[-1])
-
-LIVE_LOCATION = SPARK.read.format('CSV').option(
-    "header", "true").option("inferSchema", "true").option("delimiter", ",").load(
-        BUCKET_NAME+_MATCHING_LIVE_LOCATION[-1]).toPandas()
-logging.info(BUCKET_NAME+_MATCHING_LIVE_LOCATION[-1])
-
-logging.info('\n')
-
-FILE_READ_LIST = [BUCKET_NAME+_MATCHING_LIVE_INCIDENT_DEVICE[-1],
-                  BUCKET_NAME+_MATCHING_LIVE_INCIDENT[-1], BUCKET_NAME+_MATCHING_LIVE_LOCATION[-1]]
+FILE_READ_LIST = [os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT_DEVICE[-1]),
+                  os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]),
+                  os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_LOCATION[-1])]
 CURRENT_FILE_READ = pd.DataFrame({'Filepath' : FILE_READ_LIST})
-
+logging.info('LAST FILE READ PATH: %s \n', CONFIGPARSER['LIVE_OMS']['OMS_LAST_FILE_READ_NAME'])
 
 try:
     LAST_FILE_READ = pd.read_csv(
-        'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/Last_OMS_File.csv')
+        CONFIGPARSER['LIVE_OMS']['OMS_LAST_FILE_READ_NAME'])
 except:
     LAST_FILE_READ = pd.DataFrame()
     CURRENT_FILE_READ.to_csv(
-        'gs://aes-analytics-0001-curated/Outage_Restoration/Staging/Last_OMS_File.csv', index=False)
+        CONFIGPARSER['LIVE_OMS']['OMS_LAST_FILE_READ_NAME'], index=False)
 
 if LAST_FILE_READ.empty:
-    print("New Files Path's have been stored")
+    logging.info("New Files Path's have been stored")
 else:
-    if ((CURRENT_FILE_READ.Filepath[0] == LAST_FILE_READ.Filepath[0]) and (
-    CURRENT_FILE_READ.Filepath[1] == LAST_FILE_READ.Filepath[1]) and (
-        CURRENT_FILE_READ.Filepath[2] == LAST_FILE_READ.Filepath[2])):
-
+    if ((CURRENT_FILE_READ.Filepath[0] != LAST_FILE_READ.Filepath[0]) and (
+    CURRENT_FILE_READ.Filepath[1] != LAST_FILE_READ.Filepath[1]) and (
+        CURRENT_FILE_READ.Filepath[2] != LAST_FILE_READ.Filepath[2])):
+        pass
+    else:
+        logging.info('No new input data files in OMS')
         raise Exception('No new input data files from OMS')
 
-CURRENT_FILE_READ.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Staging/'\
-                         'Last_OMS_File.csv', index=False)
-## QC checks
+CURRENT_FILE_READ.to_csv(CONFIGPARSER['LIVE_OMS']['OMS_LAST_FILE_READ_NAME'], index=False)
+
+
+## **QC checks**
 logging.info("****QC Check****")
-logging.info("Shape of Live Incident Device Table")
-logging.info("%s", LIVE_INCIDENT_DEVICE.shape)
-logging.info("\n")
+logging.info("Shape of Live Incident Device Table %s \n", LIVE_INCIDENT_DEVICE.shape)
 
 SHAPE = LIVE_INCIDENT_DEVICE.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Live Incident device table contains 0 rows')
 
 logging.info("****QC Check****")
-logging.info("Shape of Live Location Table")
-logging.info(LIVE_LOCATION.shape)
-logging.info("\n")
+logging.info("Shape of Live Location Table %s \n", LIVE_LOCATION.shape)
 
 SHAPE = LIVE_LOCATION.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Live location table contains 0 rows')
 
 logging.info("****QC Check****")
-logging.info("Shape of Live Incident Table")
-logging.info(LIVE_INCIDENT.shape)
-logging.info("\n")
+logging.info("Shape of Live Incident Table %s \n", LIVE_INCIDENT.shape)
+
 SHAPE = LIVE_INCIDENT.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Live incident contains 0 rows')
 
 logging.info("****QC Check****")
-logging.info("No of Distinct INCIDENT_ID in INCIDENT_DEVICE Table")
-logging.info(LIVE_INCIDENT_DEVICE.INCIDENT_ID.nunique())
-logging.info("\n")
+logging.info("No of Distinct INCIDENT_ID in INCIDENT_DEVICE Table %s \n", LIVE_INCIDENT_DEVICE.INCIDENT_ID.nunique())
 logging.info("****QC Check****")
-logging.info("No of Distinct INCIDENT_ID in LOCATION Table")
-logging.info(LIVE_LOCATION.INCIDENT_ID.nunique())
-logging.info("\n")
+logging.info("No of Distinct INCIDENT_ID in LOCATION Table %s \n", LIVE_LOCATION.INCIDENT_ID.nunique())
 logging.info("****QC Check****")
-logging.info("No of Distinct INCIDENT_ID in INCIDENT Table")
-logging.info(LIVE_INCIDENT.INCIDENT_ID.nunique())
-logging.info("\n")
+logging.info("No of Distinct INCIDENT_ID in INCIDENT Table %s \n", LIVE_INCIDENT.INCIDENT_ID.nunique())
 
-
-# ## **Merge Files and Perform Data QC checks**
+## **Merge Files and Perform Data QC checks**
 # merge INCIDENT_DEVICE_ID and LOCATION table
-
 DF_INCIDENT_DEVICE_ = LIVE_INCIDENT_DEVICE.copy(deep=True)
 DF_LOCATION_ = LIVE_LOCATION.copy(deep=True)
 DF_INCIDENT_ = LIVE_INCIDENT.copy(deep=True)
-
+del LIVE_INCIDENT_DEVICE, LIVE_LOCATION, LIVE_INCIDENT
 
 # subset location tables to get required columns for analysis
 DF_LOCATION_SUBSET = DF_LOCATION_[['INCIDENT_ID', 'LOCATION_ID', 'MAJ_OTG_ID',
                                    'CITY_NAM', 'OCCURN_CD', 'CAUSE_CD', 'ENERGIZED_DATETIME']]
-
 # data quality qc
 logging.info("****QC Check****")
 logging.info("INCIDENT_DEVICE table before and after dropping duplicates at INCIDENT_ID, LOCATION_ID")
-logging.info("%s %s", len(DF_INCIDENT_DEVICE_[['INCIDENT_ID', 'LOCATION_ID']]),
+logging.info("%s %s \n", len(DF_INCIDENT_DEVICE_[['INCIDENT_ID', 'LOCATION_ID']]),
              len(DF_INCIDENT_DEVICE_[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
-logging.info("\n")
 logging.info("****QC Check****")
 logging.info("LOCATION table before and after dropping duplicates at INCIDENT_ID, LOCATION_ID")
-logging.info("%s %s", len(DF_LOCATION_SUBSET[['INCIDENT_ID', 'LOCATION_ID']]),
+logging.info("%s %s \n", len(DF_LOCATION_SUBSET[['INCIDENT_ID', 'LOCATION_ID']]),
              len(DF_LOCATION_SUBSET[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
-logging.info("\n")
-
 DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENT_DEVICE_, DF_LOCATION_SUBSET,
                                       on=['INCIDENT_ID', 'LOCATION_ID'], how='left')
-
 logging.info("****QC Check****")
 logging.info("INICDENT_DEVICE, LOCATION table merged before and after dropping duplicates at INCIDENT_ID, LOCATION_ID")
-logging.info("%s %s", len(DF_INCIDENTDEVICELOCATION_[['INCIDENT_ID', 'LOCATION_ID']]),
+logging.info("%s %s \n", len(DF_INCIDENTDEVICELOCATION_[['INCIDENT_ID', 'LOCATION_ID']]),
                       len(DF_INCIDENTDEVICELOCATION_[['INCIDENT_ID', 'LOCATION_ID']].drop_duplicates()))
-logging.info("\n")
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Incident and device location merge contains 0 rows')
 
-
-# ## **Apply Required Filters**
-
+## **Apply Required Filters**
 # customer quantity greater than 0
 logging.info('Filter for customer quantity greater than 0')
 logging.info("****QC Check****")
-logging.info("Rows left after checking for INCIDENTS whose CUSTOMER QUANTITY IS > 0")
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[(DF_INCIDENTDEVICELOCATION_.DOWNSTREAM_CUST_QTY > 0)]
-logging.info(DF_INCIDENTDEVICELOCATION_.shape)
-logging.info("\n")
+logging.info('Rows left after checking for INCIDENTS whose CUSTOMER QUANTITY IS > 0 %s \n', DF_INCIDENTDEVICELOCATION_.shape)
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Incident and device location merge contains 0 rows after CUST_QTY filter')
 
 # equip_stn_no is not NCC and not null
 logging.info('Filter for equp_stn_no is not NCC or not null')
 logging.info("****QC Check****")
-logging.info("Rows left after checking that EQUIP_STN_NO is not from <<NON CONNECTED CUSTOMERS>>")
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[(DF_INCIDENTDEVICELOCATION_.EQUIP_STN_NO != '<NCC>') &
      (DF_INCIDENTDEVICELOCATION_.EQUIP_STN_NO.notnull())]
-logging.info(DF_INCIDENTDEVICELOCATION_.shape)
-logging.info("\n")
+logging.info("Rows left after checking that EQUIP_STN_NO is not from <<NON CONNECTED CUSTOMERS>> %s \n", DF_INCIDENTDEVICELOCATION_.shape)
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Incident and device location merge contains 0 rows after EQUIP_STN_NO filter')
 
 # removing NAN from DNI_EQUIP_TYPE, CIRCT_ID, STRCTUR_NO
 logging.info('Removing NAN from DNI_EQIP_TYPE, CICRT_ID, STRCTUR_NO')
 logging.info("****QC Check****")
-logging.info("Rows left after checking CIRCT_ID is not 0 and not null, STRCTUR_NO is not null and DNI_EQIP_TYPE is not null")
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[(DF_INCIDENTDEVICELOCATION_.CIRCT_ID != 0)]
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[~DF_INCIDENTDEVICELOCATION_.CIRCT_ID.isnull()]
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[~DF_INCIDENTDEVICELOCATION_.STRCTUR_NO.isnull()]
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[~DF_INCIDENTDEVICELOCATION_.DNI_EQUIP_TYPE.isnull()]
-logging.info(DF_INCIDENTDEVICELOCATION_.shape)
-logging.info("\n")
+logging.info("Rows left after checking CIRCT_ID is not 0 and not null, STRCTUR_NO is not null and DNI_EQIP_TYPE is not null %s \n", DF_INCIDENTDEVICELOCATION_.shape)
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Incident and device location merge contains 0 rows after ID filter')
 
-# removing CLUE_CD which start with 0 but does not start with 00
+# removing CLUE_CD which start with 0 but does not start with 00 and 09OD
 logging.info('Removing CLUE_CD which start with 0 but do not start with 00')
 logging.info("****QC Check****")
-logging.info("Rows left after filtering for CLUE CODES which start with 0 but do not start with 00")
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[(DF_INCIDENTDEVICELOCATION_.CLUE_CD.str[:1] == '0') &
                                                         (DF_INCIDENTDEVICELOCATION_.CLUE_CD.str[:2] != '00')]
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[DF_INCIDENTDEVICELOCATION_.CLUE_CD != '01']
-print(DF_INCIDENTDEVICELOCATION_.shape)
-logging.info("\n")
+DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[DF_INCIDENTDEVICELOCATION_.CLUE_CD != '09OD']
+logging.info("Rows left after filtering for CLUE CODES which start with 0 but do not start with 00 %s \n", DF_INCIDENTDEVICELOCATION_.shape)
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('Incident and device location merge contains 0 rows after Clue filter')
 
 # removing occurence codes starting with cancel, found ok and duplicate
-logging.info('Removing CLUE_CD which start with 0 but do not start with 00')
+logging.info('Removing OCCURN_CD which have descriptions starting with CANCEL, FOUND OK or DUPLICATE')
 logging.info("****QC Check****")
-logging.info("Rows left after removing OCCURN_CD which have descriptions starting with CANCEL, FOUND OK or DUPLICATE")
-OCCUR_REMOV = [30003001, 33003301, 33003302, 34003400, 34003401, 34003402, 34003403, 34003404, 34003405, 34003406, 34003407, 34003408, 34003409, 35003500,
-               35003501, 35003502, 35003503, 35003504, 35003505, 35003506, 35003507, 35003508, 36003600, 36003601, 36003602, 36003603, 36003604, 36003605,
-               36003606, 36003607, 36003608, 37003703, 38003802, 38003803, 38003804, 38003807, 39003910, 41004100, 41004101, 41004102, 48004800, 48004802,
-               48004803, 49004900, 49004901, 49004902, 50005000, 50005001, 50005002, 52005200, 52005201, 52005202, 52005203, 52005204, 52005205, 52005206,
-               52005207, 53005300, 53005301, 53005302, 53005303, 53005304, 53005305, 53005306, 53005307, 53005308, 53005309, 53005310, 54005400, 54005401,
-               54005402, 54005403, 54005404, 54005405, 34003410, 30003000, 36503650, 36503651, 36503652, 36503653, 36503654, 36503655, 36503656, 36503657,
-               36503658]
+OCCUR_REMOV = json.loads(CONFIGPARSER.get("LIVE_OMS","OCCURN_REMOV"))
 DF_INCIDENTDEVICELOCATION_ = DF_INCIDENTDEVICELOCATION_[~(DF_INCIDENTDEVICELOCATION_.OCCURN_CD.isin(OCCUR_REMOV))]
-logging.info(DF_INCIDENTDEVICELOCATION_.shape)
-logging.info("\n")
+logging.info("Rows left after removing OCCURN_CD which have descriptions starting with CANCEL, FOUND OK or DUPLICATE %s \n", DF_INCIDENTDEVICELOCATION_.shape)
 
 SHAPE = DF_INCIDENTDEVICELOCATION_.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('ADS contains 0 rows after OCCURN_CD filter')
 
-
-# ## **Aggregate Numerical Columns**
-## START ADS CREATION FOR NUMERICAL COLUMNS AT INCIDENT LEVEL
-
-# 1.1 Aggregate numerical columns at INCIDENT_ID level to keep all unique INCIDNET_ID's
+## **Aggregate Numerical Columns**
+# start ads creation at numerical level with level of the table as 'INCIENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'
+# Aggregate numerical columns at INCIDENT_ID level to keep all unique INCIDNET_ID's
 DF_NUMERICAL = DF_INCIDENTDEVICELOCATION_.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], as_index=False).agg({'CALL_QTY' : 'sum',
     'DOWNSTREAM_CUST_QTY' : 'sum', 'KVA_VAL' : 'max', 'DOWNSTREAM_KVA_VAL' : 'max', 'INCIDENT_DEVICE_ID' : 'max', 'CREATION_DATETIME' : 'min',
     'SUBST_ID' : 'min', 'LOCATION_ID' : 'max', 'ENERGIZED_DATETIME' : 'max'})
@@ -281,48 +279,44 @@ DF_NUMERICAL['OUTAGE_ID'] = DF_NUMERICAL.apply(lambda x: '%s%s%s%s' % (x['INCIDE
                                                                        x['DNI_EQUIP_TYPE']),
                                                axis=1)
 
-logging.info("****QC Check****")
-logging.info("Shape of Numerical columns at 'INCIDENT_ID','STRCTUR_NO','CIRCT_ID','DNI_EQUIP_TYPE' Level")
-logging.info(DF_NUMERICAL.shape)
-logging.info('\n')
+logging.info('Numerical Dataset Created \n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_NUMERICAL)
+
 
 SHAPE = DF_NUMERICAL.shape[0]
-if SHAPE == 0:
+if SHAPE != 0:
+    pass
+else:
     raise Exception('ADS contains 0 rows after OCCURN_CD filter')
 
-
-# ## **Create Day and Night Flags**
-# 1.2 Create Day and Night Flags from CREATION_DATETIME columns
-
+## **Create Day and Night Flags**
+# Create Day and Night Flags from CREATION_DATETIME columns
 DF_NUMERICAL['CREATION_DATETIME'] = pd.to_datetime(DF_NUMERICAL['CREATION_DATETIME'], errors='coerce')
 DF_NUMERICAL['ENERGIZED_DATETIME'] = pd.to_datetime(DF_NUMERICAL['ENERGIZED_DATETIME'], errors='coerce')
-
 DF_NUMERICAL['DAY_FLAG'] = DF_NUMERICAL.CREATION_DATETIME.dt.hour.apply(lambda x: 1 if ((x >= 6) & (x < 18)) else 0)
-logging.info(DF_NUMERICAL.head())
+logging.info('Day and Night flags created \n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_NUMERICAL)
 
-
-# ## **City, Priority Treatment**
+## **City, Priority Treatment**
 DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL_1.0'] = DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL'].apply(lambda x: 1 if x == 1 else 0)
 DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL_2.0'] = DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL'].apply(lambda x: 1 if x == 2 else 0)
 DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL_3.0'] = DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL'].apply(lambda x: 1 if x == 3 else 0)
 DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL_5.0'] = DF_INCIDENTDEVICELOCATION_['PRIORITY_VAL'].apply(lambda x: 1 if x == 5 else 0)
-
 DF_INCIDENTDEVICELOCATION_.drop(['PRIORITY_VAL'], axis=1, inplace=True)
-
 DF_INCIDENTDEVICELOCATION_.CITY_NAM = DF_INCIDENTDEVICELOCATION_.CITY_NAM.apply(
     lambda x: 'INDIANAPOLIS' if(str(x).find('INDIAN') != -1) else x)
 DF_INCIDENTDEVICELOCATION_.CITY_NAM = DF_INCIDENTDEVICELOCATION_.CITY_NAM.apply(
     lambda x: 'NO_CITY' if(x != x) else x)
 
-# city treatment
+# city treatment handle/avoid multiple city names
 def cat_city_treat(group):
     '''
-    Input - Grouped CITY_NAME
-    Output - SIngle CITY_NAME
+    Input - Grouped CITY_NAME (multiple cities can be present)
+    Output - Single CITY_NAME
     '''
     if group.CITY_NAM.nunique() > 1:
         x = group[group.CITY_NAM != 'NO_CITY'].CITY_NAM.unique()
-        group.CITY_NAM = x[1]
+        group.CITY_NAM = x[0]
         return group
     else:
         return group
@@ -330,22 +324,18 @@ def cat_city_treat(group):
 DF_TREATED = DF_INCIDENTDEVICELOCATION_[['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE', 'CITY_NAM']]
 DF_TREATED = DF_TREATED.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], as_index=False).apply(cat_city_treat)
 DF_TREATED.drop_duplicates(subset=['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], ignore_index=True, inplace=True)
+logging.info('CITY NAME TREATED & PRIORITY VALUES ADDED \n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_TREATED)
 
-
-# ## **Cause, Clue, Occurn Mapping**
+## **Cause, Clue, Occurn Mapping**
 # cause, occurn, clue mapping files
-
-CLUEMAPPING = SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ",").load(
-    'gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/Mapping_Tables/cluemapping.csv').toPandas()
-OCCURNMAPPING = SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ",").load(
-    'gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/Mapping_Tables/occurnmapping.csv').toPandas()
-CAUSEMAPPING = SPARK.read.format('CSV').option("header", "true").option("inferSchema", "true").option("delimiter", ",").load(
-    'gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/Mapping_Tables/causemapping.csv').toPandas()
+CLUEMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['CLUE_MAPPING_CSV'])
+OCCURNMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['OCCURN_MAPPING_CSV'])
+CAUSEMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['CAUSEMAPPING_CSV'])
 
 DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENTDEVICELOCATION_, CLUEMAPPING, on=['CLUE_CD'], how='left')
 DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENTDEVICELOCATION_, OCCURNMAPPING, on=['OCCURN_CD'], how='left')
 DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENTDEVICELOCATION_, CAUSEMAPPING, on=['CAUSE_CD'], how='left')
-
 DF_INCIDENTDEVICELOCATION_["CLUE_DESC"] = DF_INCIDENTDEVICELOCATION_["CLUE_DESC"].astype(str)
 DF_INCIDENTDEVICELOCATION_["CAUSE_DESC"] = DF_INCIDENTDEVICELOCATION_["CAUSE_DESC"].astype(str)
 DF_INCIDENTDEVICELOCATION_["OCCURN_DESC"] = DF_INCIDENTDEVICELOCATION_["OCCURN_DESC"].astype(str)
@@ -371,7 +361,6 @@ DF_INCIDENTDEVICELOCATION_['TRANSFORMER_CLUE_FLG'] = DF_INCIDENTDEVICELOCATION_.
     lambda x: 1 if (x.find('TRANSFORMER') != -1) else 0)
 DF_INCIDENTDEVICELOCATION_['OPEN_DEVICE_CLUE_FLG'] = DF_INCIDENTDEVICELOCATION_.CLUE_DESC.apply(
     lambda x: 1 if (x.find('OPEN DEVICE') != -1) else 0)
-
 
 # segration of cause desc
 DF_INCIDENTDEVICELOCATION_['CAUSE_DESC1'] = DF_INCIDENTDEVICELOCATION_[['CAUSE_DESC']].fillna('0')
@@ -413,7 +402,6 @@ DF_INCIDENTDEVICELOCATION_['PLANNED_CAUSE_FLG'] = DF_INCIDENTDEVICELOCATION_.CAU
     lambda x: 1 if(x.find('PLANNED WORK') != -1) else 0)
 DF_INCIDENTDEVICELOCATION_['NO_OUTAGE_CAUSE_FLG'] = DF_INCIDENTDEVICELOCATION_.CAUSE_DESC1.apply(
     lambda x: 1 if(x.find('NO OUTAGE') != -1) else 0)
-
 
 # segration of OCCURN desc
 DF_INCIDENTDEVICELOCATION_['FUSE_OCCURN_FLG'] = DF_INCIDENTDEVICELOCATION_.OCCURN_DESC.apply(
@@ -457,24 +445,11 @@ DF_INCIDENTDEVICELOCATION_.drop(columns=['CAUSE_DESC1'], inplace=True)
 # preprocessing to get flags at INCIDENT_ID level (LEVEL SPECIFIED)
 PRIORITY_LIST = list(DF_INCIDENTDEVICELOCATION_.filter(regex=("PRIORITY_VAL"), axis=1).columns)
 
-CAT_LIST = ['POLE_CLUE_FLG', 'PART_LIGHT_CLUE_FLG', 'EMERGENCY_CLUE_FLG', 'POWER_OUT_CLUE_FLG',
-            'TREE_CLUE_FLG', 'WIRE_DOWN_CLUE_FLG',
-            'IVR_CLUE_FLG', 'EQUIPMENT_CLUE_FLG', 'TRANSFORMER_CLUE_FLG', 'OPEN_DEVICE_CLUE_FLG',
-            'OH_CAUSE_FLG', 'UG_CAUSE_FLG',
-            'ANIMAL_CAUSE_FLG', 'WEATHER_CAUSE_FLG', 'WEATHER_COLD_CAUSE_FLG',
-            'WEATHER_LIGHTNING_CAUSE_FLG', 'WEATHER__SNOW_CAUSE_FLG',
-            'WEATHER__WIND_CAUSE_FLG', 'WEATHER__HEAT_CAUSE_FLG', 'WEATHER__FLOOD_CAUSE_FLG',
-            'PUBLIC_CAUSE_FLG', 'STREET_CAUSE_FLG',
-            'SUBSTATION_CAUSE_FLG', 'TREE_CAUSE_FLG', 'MISCELLANEOUS_CAUSE_FLG',
-            'CUST_REQUEST_CAUSE_FLG', 'NO_CAUSE_FLG', 'PLANNED_CAUSE_FLG',
-            'NO_OUTAGE_CAUSE_FLG', 'FUSE_OCCURN_FLG', 'CUST_EQUIP_OCCURN_FLG', 'POLE_OCCURN_FLG',
-            'TRANSFORMER_OCCURN_FLG', 'METER_OCCURN_FLG',
-            'SERVICE_OCCURN_FLG', 'CABLE_OCCURN_FLG', 'ST_OCCURN_FLG', 'FIRE_OCCURN_FLG',
-            'FOUND_OPEN_OCCURN_FLG', 'PUBLIC_SAFETY_OCCURN_FLG',
-            'WIRE_OCCURN_FLG', 'SWITCH_OCCURN_FLG', 'CUTOUT_OCCURN_FLG', 'REGULATOR_OCCURN_FLG',
-            'CAP_BANK_OCCURN_FLG', 'OH_OCCURN_FLG', 'RECLOSER_OCCURN_FLG']
-
+# load categorical list from config files
+CAT_LIST = ast.literal_eval(CONFIGPARSER.get("LIVE_OMS", "CAT_LIST"))
+CAT_LIST = list(CAT_LIST)
 CAT_LIST = CAT_LIST+PRIORITY_LIST
+logging.info('Categorical Columns List %s \n', CAT_LIST)
 
 DF_INCIDENTDEVICELOCATION_CAT = DF_INCIDENTDEVICELOCATION_.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], as_index=False)[CAT_LIST].agg('sum')
 
@@ -487,36 +462,32 @@ DUMMY_COL.remove('DNI_EQUIP_TYPE')
 for i in DUMMY_COL:
     DF_INCIDENTDEVICELOCATION_CAT[i] = DF_INCIDENTDEVICELOCATION_CAT[i].apply(lambda x: 1 if x >= 1 else 0)
 
-
 # merge numercial and categorical columns to get ADS at INCIDENT_ID level (LEVEL SPECIFIED)
-
 DF_ADS = pd.merge(DF_NUMERICAL, DF_INCIDENTDEVICELOCATION_CAT, on=['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], how='left')
 DF_ADS = pd.merge(DF_ADS, DF_TREATED, on=['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'], how='left')
-
-
-logging.info("****QC Check****")
-logging.info("Shape of Numerical columns at INCIDENT_ID, STRCTUR_NO, CIRCT_ID, DNI_EQUIP_TYPE Level")
-logging.info(DF_ADS.shape)
-logging.info('\n')
+logging.info("FLAGS ADDED \n")
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
 SHAPE = DF_ADS.shape[0]
-if SHAPE == 0:
-    raise Exception('ADS contains 0 rows after OCCURN_CD filter')
+if SHAPE != 0:
+    pass
+else:
+    raise Exception('ADS contains 0 rows')
 
-# ## **Add cyclicity according to hour**
+## **Add cyclicity according to hour**
+DF_ADS['CREATION_DATETIME'] = pd.to_datetime(DF_ADS['CREATION_DATETIME'], errors='coerce')
 DF_ADS['Hour'] = DF_ADS['CREATION_DATETIME'].dt.hour
 DF_ADS['Hour_Sin'] = np.sin(DF_ADS.Hour*(2.*np.pi/24))
 DF_ADS['Hour_Cos'] = np.cos(DF_ADS.Hour*(2.*np.pi/24))
 DF_ADS.drop(['Hour'], axis=1, inplace=True)
+logging.info("Hour cyclicity Added \n")
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
-
-# ## **X Y Co-ordinate Conversion**
-# function to convert geo_x, geo_y coordinate to lat, long
-
+## **X Y Co-ordinate Conversion**
 def change_to_loc(df):
     '''
-    Input - GEO_X_COORD, GEO_Y_COORD
-    Output - LAT, LONG coordinates of the goe_x and geo_y values
+    Input - GEO_X_COORD, GEO_Y_COORD state plane co-ordinates
+    Output - Converted LAT, LONG coordinates of the geo_x and geo_y state plane values
     '''
     demnorthing = df.GEO_Y_COORD
     demeasting = df.GEO_X_COORD
@@ -549,9 +520,10 @@ DF_GEO_LOCATION = DF_LOCATION_[['LOCATION_ID', 'INCIDENT_ID', 'LAT', 'LONG']]
 
 # merge with ADS
 DF_ADS = pd.merge(DF_ADS, DF_GEO_LOCATION, on=['LOCATION_ID', 'INCIDENT_ID'], how='left')
+logging.info('Location treatment done \n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
-
-# ## **Add Zones Feature**
+## **Add Zones Feature**
 # function to add zone feature to the ads according to geo coordinates
 def add_zone_feature(df):
     '''
@@ -575,73 +547,104 @@ def add_zone_feature(df):
 
     return zone
 
-
 DF_ADS['ZONE'] = DF_ADS.apply(add_zone_feature, axis=1)
-logging.info(DF_ADS['ZONE'].unique())
+logging.info('Zones Added \n')
+logging.info("No of unique zones present %s \n", DF_ADS['ZONE'].unique())
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
-
-# ## **Create User defined Insertion Time Column**
+## **Create User defined Insertion Time Column**
 # create insertion time flag
-
 DF_ADS['INSERTION_TIME'] = datetime.today().strftime('%Y%m%d%H%M')
 DF_ADS['INSERTION_TIME'] = DF_ADS['INSERTION_TIME'].astype(np.int64)
+logging.info('Insertion time flag added')
+logging.info('\n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
-
-# ## **Rank Subsequent Outages**
+## **Rank Subsequent Outages**
 DF_ADS['Date'] = DF_ADS.CREATION_DATETIME.dt.date
 DF_ADS['RANK_SUBSEQUENT_OUTAGES'] = DF_ADS.groupby(['Date'], as_index=False)['CREATION_DATETIME'].rank(method='dense', ascending=True)
-DF_ADS.drop(['Date'], axis=1, inplace=True)
+DF_ADS.drop(['Date'], axis=1, inplace=True) 
+logging.info('Ranked Subsequent Outages Added \n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
-
-# ## **Prepare weather mapping columns**
+## **Prepare weather mapping columns**
 LIST_COLUMNS = ['LAT', 'LONG']
 DF_ADS[LIST_COLUMNS] = DF_ADS[LIST_COLUMNS].apply(pd.to_numeric, errors='coerce')
+
+# forward filling of LAT, LONGS to avoid NA's in LAT, LONGS
 DF_ADS['LAT'] = DF_ADS['LAT'].ffill()
 DF_ADS['LONG'] = DF_ADS['LONG'].ffill()
 
-DF_ADS['Marker1_LAT'] = 39.9613
-DF_ADS['Marker2_LAT'] = 39.8971
-DF_ADS['Marker3_LAT'] = 39.9060
-DF_ADS['Marker4_LAT'] = 39.9024
-DF_ADS['Marker5_LAT'] = 39.8960
-DF_ADS['Marker6_LAT'] = 39.8339
-DF_ADS['Marker7_LAT'] = 39.8412
-DF_ADS['Marker8_LAT'] = 39.8381
-DF_ADS['Marker9_LAT'] = 39.8386
-DF_ADS['Marker10_LAT'] = 39.7579
-DF_ADS['Marker11_LAT'] = 39.7621
-DF_ADS['Marker12_LAT'] = 39.7621
-DF_ADS['Marker13_LAT'] = 39.7695
-DF_ADS['Marker14_LAT'] = 39.6617
-DF_ADS['Marker15_LAT'] = 39.6639
-DF_ADS['Marker16_LAT'] = 39.6702
-DF_ADS['Marker17_LAT'] = 39.6744
-DF_ADS['Marker18_LAT'] = 39.5909
-DF_ADS['Marker19_LAT'] = 39.5295
-DF_ADS['Marker20_LAT'] = 39.5475
+MARKER_LOCATION_CSV = pd.read_csv(CONFIGPARSER['LIVE_OMS']['MARKER_LOCATION_CSV'])
 
-DF_ADS['Marker1_LONG'] = -86.4034
-DF_ADS['Marker2_LONG'] = -86.3045
-DF_ADS['Marker3_LONG'] = -86.2001
-DF_ADS['Marker4_LONG'] = -86.0738
-DF_ADS['Marker5_LONG'] = -85.9783
-DF_ADS['Marker6_LONG'] = -86.3155
-DF_ADS['Marker7_LONG'] = -86.2056
-DF_ADS['Marker8_LONG'] = -86.0985
-DF_ADS['Marker9_LONG'] = -85.9811
-DF_ADS['Marker10_LONG'] = -86.3155
-DF_ADS['Marker11_LONG'] = -86.2042
-DF_ADS['Marker12_LONG'] = -86.0923
-DF_ADS['Marker13_LONG'] = -85.9708
-DF_ADS['Marker14_LONG'] = -86.2935
-DF_ADS['Marker15_LONG'] = -86.1823
-DF_ADS['Marker16_LONG'] = -86.0669
-DF_ADS['Marker17_LONG'] = -85.9557
-DF_ADS['Marker18_LONG'] = -86.4212
-DF_ADS['Marker19_LONG'] = -86.5874
-DF_ADS['Marker20_LONG'] = -86.2743
+MARKER_LOCATION_CSV = MARKER_LOCATION_CSV.loc[:, ~MARKER_LOCATION_CSV.columns.str.contains('^Unnamed')]
+MARKER_LOCATION_CSV = MARKER_LOCATION_CSV.loc[:, ~MARKER_LOCATION_CSV.columns.str.contains('_c0')]
+
+MARKER_LIST = list(MARKER_LOCATION_CSV['Marker'])
+logging.info('Marker List %s \n', MARKER_LIST)
+
+MARKER_LOCATION_CSV = MARKER_LOCATION_CSV.set_index('Marker').T.to_dict('list')
+
+DF_ADS['Marker1_LAT'], DF_ADS['Marker1_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[0])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[0])[1])
+DF_ADS['Marker2_LAT'], DF_ADS['Marker2_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[1])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[1])[1])
+DF_ADS['Marker3_LAT'], DF_ADS['Marker3_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[2])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[2])[1])
+DF_ADS['Marker4_LAT'], DF_ADS['Marker4_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[3])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[3])[1])
+DF_ADS['Marker5_LAT'], DF_ADS['Marker5_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[4])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[4])[1])
+DF_ADS['Marker6_LAT'], DF_ADS['Marker6_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[5])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[5])[1])
+DF_ADS['Marker7_LAT'], DF_ADS['Marker7_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[6])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[6])[1])
+DF_ADS['Marker8_LAT'], DF_ADS['Marker8_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[7])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[7])[1])
+DF_ADS['Marker9_LAT'], DF_ADS['Marker9_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[8])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[8])[1])
+DF_ADS['Marker10_LAT'], DF_ADS['Marker10_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[9])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[9])[1])
+DF_ADS['Marker11_LAT'], DF_ADS['Marker11_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[10])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[10])[1])
+DF_ADS['Marker12_LAT'], DF_ADS['Marker12_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[11])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[11])[1])
+DF_ADS['Marker13_LAT'], DF_ADS['Marker13_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[12])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[12])[1])
+DF_ADS['Marker14_LAT'], DF_ADS['Marker14_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[13])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[13])[1])
+DF_ADS['Marker15_LAT'], DF_ADS['Marker15_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[14])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[14])[1])
+DF_ADS['Marker16_LAT'], DF_ADS['Marker16_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[15])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[15])[1])
+DF_ADS['Marker17_LAT'], DF_ADS['Marker17_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[16])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[16])[1])
+DF_ADS['Marker18_LAT'], DF_ADS['Marker18_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[17])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[17])[1])
+DF_ADS['Marker19_LAT'], DF_ADS['Marker19_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[18])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[18])[1])
+DF_ADS['Marker20_LAT'], DF_ADS['Marker20_LONG'] = (
+    MARKER_LOCATION_CSV.get(MARKER_LIST[19])[0], MARKER_LOCATION_CSV.get(MARKER_LIST[19])[1])
+
+logging.info('Marker Mapping Added \n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
 # calculate distance from 2 lat long
+def check_nulls(func):
+    '''
+    Decorator to check Point values p1, p2 value is not None
+    And Valid Latitude and Logitude coordinates
+    '''
+    def inner(p1, p2):
+        if(math.isnan(p1[0]))|(math.isnan(p1[1]))|(math.isnan(p2[0]))|(math.isnan(p2[1])):
+            logging.info('Invalid Lat or Long %s, %s, %s, %s', p1[0], p1[1], p2[0], p2[1])
+            logging.info('\n')
+            return
+
+        return func(p1, p2)
+    return inner
+
+@check_nulls
 def haversine(p1, p2):
     '''
     Input - point1 and point2 in LAT, LONG
@@ -658,14 +661,22 @@ def haversine(p1, p2):
 
     return R * c   # returns distance between p1 and p2 in km
 
-# calculate minimum distance
-def minimum_distance(lat, long, marker1_lat, marker2_lat, marker3_lat, marker4_lat, marker5_lat, marker6_lat, marker7_lat, marker8_lat, marker9_lat, marker10_lat, marker11_lat,
-                     marker12_lat, marker13_lat, marker14_lat, marker15_lat, marker16_lat, marker17_lat, marker18_lat, marker19_lat, marker20_lat, marker1_long, marker2_long,
-                     marker3_long, marker4_long, marker5_long, marker6_long, marker7_long, marker8_long, marker9_long, marker10_long, marker11_long, marker12_long, marker13_long,
-                     marker14_long, marker15_long, marker16_long, marker17_long, marker18_long, marker19_long, marker20_long):
+def minimum_distance(lat, long, marker1_lat, marker2_lat, marker3_lat,
+                     marker4_lat, marker5_lat, marker6_lat, marker7_lat,
+                     marker8_lat, marker9_lat, marker10_lat, marker11_lat,
+                     marker12_lat, marker13_lat, marker14_lat, marker15_lat,
+                     marker16_lat, marker17_lat, marker18_lat, marker19_lat,
+                     marker20_lat, marker1_long, marker2_long, marker3_long,
+                     marker4_long, marker5_long, marker6_long, marker7_long,
+                     marker8_long, marker9_long, marker10_long, marker11_long,
+                     marker12_long, marker13_long, marker14_long, marker15_long,
+                     marker16_long, marker17_long, marker18_long, marker19_long,
+                     marker20_long):
     '''
     Input - latitude, longitude of outages and different marker locations
-    Output - minimum distance and index of marker location
+    Tasks - Calculate minimum distance of outage location from Marker Location
+    to determine which location's weather data should be used
+    Output - Minimum distance from Marker Location and index of Marker location
     '''
     dist1 = haversine((lat, long), (marker1_lat, marker1_long))
     dist2 = haversine((lat, long), (marker2_lat, marker2_long))
@@ -688,7 +699,8 @@ def minimum_distance(lat, long, marker1_lat, marker2_lat, marker3_lat, marker4_l
     dist19 = haversine((lat, long), (marker19_lat, marker19_long))
     dist20 = haversine((lat, long), (marker20_lat, marker20_long))
 
-    dist_list = [dist1, dist2, dist3, dist4, dist5, dist6, dist7, dist8, dist9, dist10, dist11, dist12, dist13, dist14, dist15, dist16, dist17, dist18, dist19, dist20]
+    dist_list = [dist1, dist2, dist3, dist4, dist5, dist6, dist7, dist8, dist9, dist10,
+                 dist11, dist12, dist13, dist14, dist15, dist16, dist17, dist18, dist19, dist20]
 
     min_index, min_value = min(enumerate(dist_list), key=operator.itemgetter(1))
 
@@ -697,33 +709,43 @@ def minimum_distance(lat, long, marker1_lat, marker2_lat, marker3_lat, marker4_l
     else:
         return min_value, min_index+1
 
-DF_ADS['Min_Distance'], DF_ADS['Marker_Location'] = zip(*DF_ADS.apply(lambda row: minimum_distance(row['LAT'], row['LONG'], row['Marker1_LAT'], row['Marker2_LAT'],
-    row['Marker3_LAT'], row['Marker4_LAT'], row['Marker5_LAT'], row['Marker6_LAT'], row['Marker7_LAT'], row['Marker8_LAT'], row['Marker9_LAT'], row['Marker10_LAT'],
-    row['Marker11_LAT'], row['Marker12_LAT'], row['Marker13_LAT'], row['Marker14_LAT'], row['Marker15_LAT'], row['Marker16_LAT'], row['Marker17_LAT'],
-    row['Marker18_LAT'], row['Marker19_LAT'], row['Marker20_LAT'], row['Marker1_LONG'], row['Marker2_LONG'], row['Marker3_LONG'], row['Marker4_LONG'],
-    row['Marker5_LONG'], row['Marker6_LONG'], row['Marker7_LONG'], row['Marker8_LONG'], row['Marker9_LONG'], row['Marker10_LONG'], row['Marker11_LONG'],
-    row['Marker12_LONG'], row['Marker13_LONG'], row['Marker14_LONG'], row['Marker15_LONG'], row['Marker16_LONG'], row['Marker17_LONG'], row['Marker18_LONG'],
-    row['Marker19_LONG'], row['Marker20_LONG']), axis=1))
+DF_ADS['Min_Distance'], DF_ADS['Marker_Location'] = zip(
+    *DF_ADS.apply(lambda row: minimum_distance(
+        row['LAT'], row['LONG'], row['Marker1_LAT'], row['Marker2_LAT'],
+        row['Marker3_LAT'], row['Marker4_LAT'], row['Marker5_LAT'],
+        row['Marker6_LAT'], row['Marker7_LAT'], row['Marker8_LAT'],
+        row['Marker9_LAT'], row['Marker10_LAT'], row['Marker11_LAT'],
+        row['Marker12_LAT'], row['Marker13_LAT'], row['Marker14_LAT'],
+        row['Marker15_LAT'], row['Marker16_LAT'], row['Marker17_LAT'],
+        row['Marker18_LAT'], row['Marker19_LAT'], row['Marker20_LAT'],
+        row['Marker1_LONG'], row['Marker2_LONG'], row['Marker3_LONG'],
+        row['Marker4_LONG'], row['Marker5_LONG'], row['Marker6_LONG'],
+        row['Marker7_LONG'], row['Marker8_LONG'], row['Marker9_LONG'],
+        row['Marker10_LONG'], row['Marker11_LONG'], row['Marker12_LONG'],
+        row['Marker13_LONG'], row['Marker14_LONG'], row['Marker15_LONG'],
+        row['Marker16_LONG'], row['Marker17_LONG'], row['Marker18_LONG'],
+        row['Marker19_LONG'], row['Marker20_LONG']), axis=1))
 
-
-
-DF_ADS.drop(['Marker1_LAT', 'Marker2_LAT', 'Marker3_LAT', 'Marker4_LAT', 'Marker5_LAT', 'Marker6_LAT', 'Marker7_LAT', 'Marker8_LAT', 'Marker9_LAT', 'Marker10_LAT',
-            'Marker11_LAT', 'Marker12_LAT', 'Marker13_LAT', 'Marker14_LAT', 'Marker15_LAT', 'Marker16_LAT', 'Marker17_LAT', 'Marker18_LAT', 'Marker19_LAT', 'Marker20_LAT',
-            'Marker1_LONG', 'Marker2_LONG', 'Marker3_LONG', 'Marker4_LONG', 'Marker5_LONG', 'Marker6_LONG', 'Marker7_LONG', 'Marker8_LONG', 'Marker9_LONG', 'Marker10_LONG',
-            'Marker11_LONG', 'Marker12_LONG', 'Marker13_LONG', 'Marker14_LONG', 'Marker15_LONG', 'Marker16_LONG', 'Marker17_LONG', 'Marker18_LONG', 'Marker19_LONG',
-            'Marker20_LONG'], axis=1, inplace=True)
+DF_ADS.drop(['Marker1_LAT', 'Marker2_LAT', 'Marker3_LAT', 'Marker4_LAT', 'Marker5_LAT',
+             'Marker6_LAT', 'Marker7_LAT', 'Marker8_LAT', 'Marker9_LAT', 'Marker10_LAT',
+             'Marker11_LAT', 'Marker12_LAT', 'Marker13_LAT', 'Marker14_LAT', 'Marker15_LAT',
+             'Marker16_LAT', 'Marker17_LAT', 'Marker18_LAT', 'Marker19_LAT', 'Marker20_LAT',
+             'Marker1_LONG', 'Marker2_LONG', 'Marker3_LONG', 'Marker4_LONG', 'Marker5_LONG',
+             'Marker6_LONG', 'Marker7_LONG', 'Marker8_LONG', 'Marker9_LONG', 'Marker10_LONG',
+             'Marker11_LONG', 'Marker12_LONG', 'Marker13_LONG', 'Marker14_LONG', 'Marker15_LONG',
+             'Marker16_LONG', 'Marker17_LONG', 'Marker18_LONG', 'Marker19_LONG',
+             'Marker20_LONG'], axis=1, inplace=True)
 
 DF_ADS['Marker_Location'] = 'Marker '+DF_ADS['Marker_Location'].astype(str)
+logging.info('Marker Mapping Done \n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
-logging.info('Check shape of dataframe ads')
-logging.info(DF_ADS.shape)
-
-
-# ## **Add dispatch Area Location**
+## **Add dispatch Area Location**
 def cal_distance_from_dipatch_area(lat, long):
     '''
-    Input - Latitude, Logitude of an outages
-    Output - Minimum distance from a dispatch location and its index
+    Input - Latitude, Logitude of an outage locations
+    Output - Minimum distance from a dispatch location 
+    and its index to identify dispatch location name
     '''
     if(math.isnan(lat)) | (math.isnan(long)):
         return None, None
@@ -742,13 +764,15 @@ def cal_distance_from_dipatch_area(lat, long):
 
         return min_value, min_index+1
 
-
-DF_ADS['Min_Distance'], DF_ADS['Grid'] = zip(*DF_ADS.apply(lambda row: cal_distance_from_dipatch_area(row['LAT'], row['LONG']), axis=1))
-
+DF_ADS['Min_Distance'], DF_ADS['Grid'] = zip(
+    *DF_ADS.apply(lambda row: cal_distance_from_dipatch_area(
+        row['LAT'], row['LONG']), axis=1))
 
 def map_grid_to_location(row):
     '''
-    Add dispatch area location for all outages which are present
+    Input - Row numbers of the Dipatch Location
+    Tasks - Add dispatch area location for all outages which are present
+    Output - Name of the actual Dispatch Area
     '''
     value = ''
     if row == 1:
@@ -768,29 +792,28 @@ def map_grid_to_location(row):
 
     return value
 
-
 DF_ADS['Dispatch_Location'] = DF_ADS.apply(lambda row: map_grid_to_location(row['Grid']), axis=1)
 DF_ADS.drop(['Min_Distance', 'Grid'], axis=1, inplace=True)
+logging.info('Dispatch Location Added')
+logging.info('\n')
+QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS)
 
-
-logging.info(DF_ADS.head())
-
-
-# ## **QC Check**
+## **QC Check**
 def check_level(group):
     '''
-    checks level of the table created
+    Input - Finally Created Analytical Dataframe
+    Tasks - Checks level of the table created
+    Output - 1 1 1 1 if the level of the table is correct
     '''
-    print(len(group))
+    logging.info('Check Level of Analytical Dataset %s', len(group))
 
-logging.info(DF_ADS.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE']).apply(check_level))
-logging.info('\n')
-logging.info("No of NA's if any")
-logging.info('\n')
-logging.info(DF_ADS.isnull().values.any())
+logging.info('Check Level of Analytical Dataset Created: %s \n',
+              DF_ADS.groupby(['INCIDENT_ID', 'STRCTUR_NO',
+                              'CIRCT_ID', 'DNI_EQUIP_TYPE']).apply(check_level))
+logging.info('No of NAs present if any: %s \n', DF_ADS.isnull().values.any())
 
-DF_ADS.fillna(method='ffill', inplace=True)
+## **Write table to OMS Live Mapped Dataset to Curated OMS**
+LIVE_OMS_STAGING_PATH = CONFIGPARSER['LIVE_OMS']['LIVE_OMS_STAGING_PATH']
+logging.info('LIVE OMS STAGING PATH %s \n', LIVE_OMS_STAGING_PATH)
 
-# ## **Write table to OMS Live Mapped Dataset to Curated OMS**
-logging.disable(logging.CRITICAL)
-DF_ADS.to_csv('gs://aes-analytics-0001-curated/Outage_Restoration/Live_Data_Curation/OMS/OMS_Live_Data.csv')
+DF_ADS.to_csv(LIVE_OMS_STAGING_PATH, index=False)
