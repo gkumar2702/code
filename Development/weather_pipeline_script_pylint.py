@@ -34,6 +34,8 @@ DF_WEATHER = gbq.read_gbq(DF_WEATHER, project_id=CONFIGPARSER['WEATHER_PIPELINE'
 logging.info('BQ Table Loaded')
 logging.info('\n')
 
+DF_WEATHER.drop_duplicates(subset=['timestamp','Location'],keep='first',inplace=True)
+
 logging.info(DF_WEATHER.shape)
 logging.info('\n')
 
