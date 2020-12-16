@@ -192,7 +192,6 @@ except:
     raise Exception("Failed to load predictions from Bigquery table")
 PREDICTIONS = list(DF_PRED['OUTAGE_ID'].unique())
 DF_PRED.drop_duplicates(subset='OUTAGE_ID', inplace=True)
-
 DF_PRED['Creation_Time'] = pd.to_datetime(DF_PRED['Creation_Time'])
 DF_PRED['Creation_Time'] = DF_PRED['Creation_Time'].dt.strftime('%Y-%m-%d %H:%M:%S')
 DF_PRED['Creation_Time'] = pd.to_datetime(DF_PRED['Creation_Time'])

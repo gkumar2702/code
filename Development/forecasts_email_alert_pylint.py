@@ -9,6 +9,7 @@ weather source API
 '''
 
 ##################################### Loading Libraries #################################
+# standard library imports
 import logging
 import ast
 from datetime import date, timedelta
@@ -131,11 +132,14 @@ OUTAGES_LL_95 = PREPAREDNESS_PREDICTIONS['Outages_LL_95'][0]
 OUTAGES_UL_95 = PREPAREDNESS_PREDICTIONS['Outages_UL_95'][0]
 CUSTOMERS_LL_95 = PREPAREDNESS_PREDICTIONS['Customers_LL_95'][0]
 CUSTOMERS_UL_95 = PREPAREDNESS_PREDICTIONS['Customers_UL_95'][0]
+
+# convert string values to float
 OUTAGES_LL_95 = float(OUTAGES_LL_95)
 OUTAGES_UL_95 = float(OUTAGES_UL_95)
 CUSTOMERS_LL_95 = float(CUSTOMERS_LL_95)
 CUSTOMERS_UL_95 = float(CUSTOMERS_UL_95)
 
+# round off float values to nearest integer
 OUTAGES_LL_95 = round(OUTAGES_LL_95)
 OUTAGES_UL_95 = round(OUTAGES_UL_95)
 CUSTOMERS_LL_95 = round(CUSTOMERS_LL_95)
@@ -147,8 +151,7 @@ logging.info('Outages upper bound: %s', OUTAGES_UL_95)
 logging.info('Customers lower bound: %s', CUSTOMERS_LL_95)
 logging.info('Customers upper bound: %s \n', CUSTOMERS_UL_95)
 
-##### Calculating content for weather attributes table #####
-
+# Calculating content for weather attributes table #####
 # Storing the required temperature values
 TEMP_MIN = str(round(LOCATION_MERGED['tempMin'].min(), 1)) + ' F'
 TEMP_MAX = str(round(LOCATION_MERGED['tempMax'].max(), 1)) + ' F'
@@ -165,7 +168,7 @@ WIND_MEDIAN = str(round(LOCATION_MERGED['windSpdAvg'].median(), 1)) + ' mi/hr'
 logging.info('Calculated Windspeed forecasts')
 logging.info('Minimum Windspeed: %s', WIND_MIN)
 logging.info('Maximum Windspeed: %s', WIND_MAX)
-logging.info('Median Windspeed: %s\n', WIND_MEDIAN)
+logging.info('Median Windspeed: %s \n', WIND_MEDIAN)
 
 # Storing the required windspeed values
 PRECIPITATION = str(round(LOCATION_MERGED['precipProb'].mean(), 1))
@@ -174,8 +177,7 @@ logging.info('Calculated Precipitation and Snowfall forecasts')
 logging.info('Mean Precipitation Probability: %s', PRECIPITATION)
 logging.info('Maximum Snowfall Probability: %s\n', SNOWFALL)
 
-##### Calculating Content for Highlights Sections #####
-
+# Calculating Content for Highlights Sections #####
 # Getting the Location having max and min temperature
 MIN_TEMP_LOC = LOCATION_MERGED[LOCATION_MERGED['tempMin'] ==
                                LOCATION_MERGED['tempMin'].min()].reset_index()['Landmark'][0]
@@ -193,8 +195,7 @@ MAX_PRECIP = round(LOCATION_MERGED['precipProb'].max(), 1)
 logging.info('Max. Precipitation Location: %s', MAX_PRECIP_LOC)
 logging.info('Max. Precipitation: %s\n', MAX_PRECIP)
 
-###### Creating and populating weather table ######
-
+# Creating and populating weather table
 WEATHER_TABLE = pd.DataFrame(columns=['Median', 'Minimum', 'Maximum', 'Probability%'],
                              index=['Temperature', 'Windspeed', 'Precipitation', 'Snowfall'])
 WEATHER_TABLE.loc['Temperature'] = pd.Series({'Median': TEMP_MEDIAN, 'Minimum': TEMP_MIN,

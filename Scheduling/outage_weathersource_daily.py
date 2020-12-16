@@ -55,9 +55,9 @@ YESTERDAY = datetime.datetime.combine(
 DEFAULT_ARGS = {
     'start_date': YESTERDAY,
     'email_on_failure': True,
-    'email': ['musigma.bkumar.c@aes.com', 'eric.nussbaumer@aes.com', 'ms.gkumar.c@aes.com',
-              'musigma.dchauhan.c@aes.com', 'musigma.skumar.c@aes.com',
-              'musigma.aaggarwal.c@aes.com'],
+    'email': ['musigma.bkumar.c@aes.com', 'eric.nussbaumer@aes.com', 
+              'ms.gkumar.c@aes.com', 'musigma.dchauhan.c@aes.com', 
+              'musigma.skumar.c@aes.com', 'musigma.aaggarwal.c@aes.com'],
     'email_on_retry': False,
     'retries': 2,
     'retry_delay': datetime.timedelta(minutes=5),

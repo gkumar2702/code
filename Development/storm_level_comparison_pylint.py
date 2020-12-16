@@ -82,8 +82,7 @@ logging.info('Shape of HIS Incident Device Table %s \n', FACILITY.shape)
 logging.info('****QC Check****')
 logging.info('No of Distinct INCIDENT_ID in INCIDENT_DEVICE Table %s \n', FACILITY.FAC_JOB_ID.nunique())
 
-# Apply Required Filters
-# APPLYING FILTERS FOR CORRECT DATA INPUTS
+# Apply Required Filters for correct data inputs
 # customer quantity greater than 0
 logging.info('Filter for customer quantity greater than 0')
 FACILITY = FACILITY[(FACILITY.DOWNSTREAM_CUST_QTY > 0)]
@@ -113,9 +112,7 @@ logging.info("Rows left after filtering for CLUE CODES which start with 0 but do
 logging.info('Removing CLUE_CD which start with 0 but do not start with 00')
 FACILITY = FACILITY[~(FACILITY.OCCURN_CD.isin(OCCUR_REMOV))]
 logging.info("Rows left after removing OCCURN_CD which have    descriptions starting with CANCEL, FOUND OK or DUPLICATE %s \n", FACILITY.shape)
-
 DF_NUMERICAL = FACILITY.copy(deep=True)
-
 
 ## START ADS CREATION FOR NUMERICAL COLUMNS AT INCIDENT LEVEL
 # 1.1 Aggregate numerical columns at INCIDENT_ID level to keep all unique 'INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'

@@ -1,4 +1,4 @@
-##Loading the required packages 
+# loading the required packages 
 library('SparkR')
 sparkR.session()
 library(dplyr)
@@ -7,7 +7,7 @@ library(Matrix)
 library(glmnet)
 library(earth)
 
-#loading all required dates to variables
+# loading all required dates to variables
 today <- format(Sys.time(),"%Y-%m-%d")
 tomorrow <- format(as.Date(Sys.time(),format="%Y%m%d")+1,"%Y%m%d")
 day_after <- format(as.Date(Sys.time(),format="%Y%m%d")+2,"%Y%m%d")
@@ -15,7 +15,7 @@ year_month <- format(Sys.time(),"%Y-%m")
 year_month_1 <- format(as.Date(Sys.time(),format="%Y%m%d")+1,"%Y-%m")
 year_month_2 <- format(as.Date(Sys.time(),format="%Y%m%d")+2,"%Y-%m")
 
-##Read the Required Forecasted weather File
+# Read the Required Forecasted weather File
 Weather_data <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Weather_live_IPL/Weather_forecast_daily_TOM.csv"),source = "csv", header="true",inferschema="true")
 Weather_data <- SparkR :: collect(Weather_data)
 Weather_data <- na.omit(Weather_data)
@@ -24,24 +24,24 @@ Weather_data1 <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restorat
 Weather_data1 <- SparkR :: collect(Weather_data1)
 Weather_data1 <- na.omit(Weather_data1)
 
-##Reading the RDS 
+# Reading the RDS 
 model<-readRDS('/root/model_MARS_2020_08_14_17_52_29.RDS')
 
 model.function <- function(Weather_data) {
   
-  ##Storing the Data
+  # Storing the Data
   df <- Weather_data
   
-  ##Storing the time stamp
+  # Storing the time stamp
   a <- unique(df$timestamp)
   
-  ##Dropping unneccessary columns
+  # Dropping unneccessary columns
   df <- df[, !(colnames(df) %in% c("V1","latitude",
                                    "longitude","Location",
                                    "timestampInit","precipProb",
                                    "snowfallProb"))]
   
-  ##Taking min,max & avg of weather variables
+  # Taking min,max & avg of weather variables
   df <- df %>%
     group_by(timestamp) %>%
     summarise(cldCvrAvg = mean(cldCvrAvg),
@@ -116,38 +116,37 @@ model.function <- function(Weather_data) {
   
   
   
-  #Keeping the required Columns as per feature selection
+  # Keeping the required Columns as per feature selection
   keeps <- c("dewPtAvg", "feelsLikeAvg" , "feelsLikeMax", "feelsLikeMin", "heatIndexAvg", "heatIndexMin",
              "mslPresMax", "mslPresMin", "precip", "radSolarAvg", "sfcPresMax", "sfcPresMin",
              "spcHumAvg", "windSpd100mAvg","windSpd100mMax","windSpd80mMax","windSpdAvg","windSpdMax")
   df <- df[keeps]
   
-  ##Predicting for Storm_Duration
+  # Predicting for Storm_Duration
   MARS <- model$predict(model$model,df)
   MARS<-(MARS)*(MARS)*(MARS)
   
-  #creating column to store output in df
+  # creating column to store output in df
   df$Predicted_Cust_Qty<-MARS
   
-  #creating column to store the timestamp
+  # creating column to store the timestamp
   df$Date <- a
   
-  #Final df
+  # final df
   df
 }
 
-##Calling  model.function
+# Calling  model.function
 weather <- model.function(Weather_data)
 weather_nextday <- model.function(Weather_data1)
 
-#merging the data into one dataframe
+# merging the data into one dataframe
 m1 <- merge(weather_nextday, weather, all = TRUE)
 
-#Keeping the required Columns as per feature selection
+# Keeping the required Columns as per feature selection
 keeps <- c("Date", "Predicted_Cust_Qty" )
 m1 <- m1[keeps]
 m1$Predicted_Cust_Qty <-round(m1$Predicted_Cust_Qty)
-
 
 # Residuals for different ranges
 resid_0_2500 <- 1363.56
@@ -178,7 +177,7 @@ m1$Customers_UL_95 <- format(round(m1$Customers_UL_95, 0), nsmall = 0)
 m1$Customers_LL_95 <- as.integer(m1$Customers_LL_95)
 m1$Customers_UL_95 <- as.integer(m1$Customers_UL_95)
 
-#Writing to GCS
+# Writing to GCS
 write.csv(m1,paste0('/root/Predicted_Cust_Qty','.csv',sep=""),row.names=FALSE)
 root_file<-paste0(' /root/Predicted_Cust_Qty','.csv',sep="")
 output_folder<-paste0('gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Deliverables/Outage_Duration/',year_month,'/',today,'/')

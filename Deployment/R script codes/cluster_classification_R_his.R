@@ -16,8 +16,6 @@ weather_data_raw_df <- read.df(input_filename, source = "csv", header="true",inf
 weather_data_raw <- SparkR :: collect(weather_data_raw_df)
 
 model<-readRDS("/root/model_RF_2020-08-20-15-25-54.RDS")
-
-
 cluster<-model$predict(model$model,weather_data_raw[,model$features],model$factorLabels)
 
 cluster<-data.frame(cluster)

@@ -184,7 +184,7 @@ DF_OMS_LIVE.drop(['weekday', 'Location'], axis=1, inplace=True)
 logging.info('Final Dataset Created \n')
 QC_CHECK_SHAPE_AND_COLUMNS(DF_OMS_LIVE)
 
-## **Write OMS Live and added Weather Source Dataset for Curated Processing**
+# Write OMS Live and added Weather Source Dataset for Curated Processing
 OMS_LIVE_PATH = CONFIGPARSER['DATA_COLLATION']['OMS_LIVE_PATH']
 logging.info('OMS LIVE PATH %s \n', OMS_LIVE_PATH)
 

@@ -59,7 +59,7 @@ logging.info('OMS LIVE CURATED DATASET LOADED \n')
 logging.info('No of NAs if any: %s \n', DF_ADS_FINAL.isnull().values.any())
 QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS_FINAL)
 
-## **Read Storm Profiles Data**
+# Read Storm Profiles Data
 BUCKET_NAME = CONFIGPARSER['LOAD_AND_PREDICT']['STORM_PROFILE_BUCKET']
 
 DF_ADS_FINAL['CREATION_DATETIME'] = pd.to_datetime(
@@ -156,7 +156,7 @@ FEATURE_LIST = list(FEATURES_DF.Features_List)
 logging.info('Features Loaded \n')
 logging.info('Name of the features present %s \n', FEATURE_LIST)
 
-## **Feature Pre-Processing before it is sent to the Model**
+# Feature Pre-Processing before it is sent to the Model
 DF_ADS_FINAL_V1 = DF_ADS_FINAL.copy(deep=True)
 
 DF_ADS_FINAL_V1['POWER_OUT_CLUE_FLG_False'] = DF_ADS_FINAL_V1['POWER_OUT_CLUE_FLG'].apply(
@@ -253,7 +253,7 @@ DF_ADS_FINAL['Predicted_ETR'] = DF_ADS_FINAL['Predicted_ETR'].apply(
 logging.info('Final ETRs Created \n')
 QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS_FINAL)
 
-## **Final Pre-processing to Write Outputs in correct Format**
+# Final Pre-processing to Write Outputs in correct Format
 DF_ADS_FINAL = DF_ADS_FINAL[['OUTAGE_ID', 'INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID',
                              'DNI_EQUIP_TYPE', 'CREATION_DATETIME', 'Predicted_ETR',
                              'Restoration_Period', 'Cluster_ID']]
@@ -263,7 +263,7 @@ DF_ADS_FINAL.rename({'CREATION_DATETIME' : 'Creation_Time',
                      'Restoration_Period' : 'ETR','Cluster_ID' : 'Weather_Profile'}, axis=1, inplace=True)
 
 
-## **Read and Add Insertion Time to Outages**
+# Read and Add Insertion Time to Outages
 DF_PRED = DF_ADS_FINAL.copy(deep=True)
 DF_PRED['Last_Updated'] = datetime.now().strftime("%Y-%m-%d %H:%M")
 
