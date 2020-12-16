@@ -21,8 +21,9 @@ Across all model levels, training was done on actual data (actual weather variab
 -   ETR and Storm Model Diagnostic with dahsboard using business firendly metrics on a daily basis
 
 ### Architecture Diagram
-![Architecture diagram Storm](https://gitlab.com/aes-digital/musigma/outage-restoration/-/raw/master/Project%20Details/Architecture_storm_level.jpg?raw=true)
 ![Architecture diagram ETR](https://gitlab.com/aes-digital/musigma/outage-restoration/-/raw/master/Project%20Details/Architecture_ETR.jpg?raw=true)
+<br>
+![Architecture diagram Storm](https://gitlab.com/aes-digital/musigma/outage-restoration/-/raw/master/Project%20Details/Architecture_storm_level.jpg?raw=true)
 ### Configuration file
 - We have 2 config files 
         - config_ETR.ini
@@ -133,6 +134,3 @@ landmark_mapping = Location to read Lanmark Mapping CSV<br>
 email_recipients = Email IDs which will receive the email alert<br>
 email_from = Email ID from which the mail will be sent<br>
 smtp_server = Server address for sending the mail<br>
-
-
-
