@@ -1,6 +1,6 @@
 '''
 Author - Mu Sigma
-Updated: 09 Dec 2020
+Updated: 16 Dec 2020
 Version 2
 Tasks: This scripts collects data from Weather Source Location
 Adds it to OMS LIVE PREPROCESSED DATA
@@ -30,7 +30,7 @@ logger.setLevel(logging.INFO)
 
 # read config file
 CONFIGPARSER = ConfigParser(interpolation=ExtendedInterpolation())
-CONFIGPARSER.read('confignew0001.ini')
+CONFIGPARSER.read('config_ETR.ini')
 logging.info('Config File Loaded')
 logging.info('Config File Sections %s', CONFIGPARSER.sections())
 
@@ -48,7 +48,10 @@ def QC_CHECK_SHAPE_AND_COLUMNS(df):
 DATA_COLLATION_STAGING_PATH = CONFIGPARSER['DATA_COLLATION']['DATA_COLLATION_STAGING_PATH']
 logging.info('Data Collation Staging Path: %s \n', DATA_COLLATION_STAGING_PATH)
 
-DF_OMS_LIVE = pd.read_csv(DATA_COLLATION_STAGING_PATH)
+try:
+    DF_OMS_LIVE = pd.read_csv(DATA_COLLATION_STAGING_PATH)
+except:
+    raise Exception('OMS preprocessed data not found')
 
 DF_OMS_LIVE = DF_OMS_LIVE.loc[:, ~DF_OMS_LIVE.columns.str.contains('^Unnamed')]
 DF_OMS_LIVE = DF_OMS_LIVE.loc[:, ~DF_OMS_LIVE.columns.str.contains('^_c0')]
@@ -69,10 +72,13 @@ logging.info('Unique Dates for files: %s \n', UNIQUE)
 # read weather source data from big query
 WSFILES = pd.DataFrame()
 
-for i in UNIQUE:
-    WS_LOCATION = CONFIGPARSER['DATA_COLLATION']['WS_QUERY'].format(i)
-    WSFILES = WSFILES.append(gbq.read_gbq(WS_LOCATION, project_id=CONFIGPARSER['SETTINGS']['PROJECT_ID']))
-WS_DF = WSFILES.drop_duplicates(['timestamp', 'Location'], keep='last')
+try:
+    for i in UNIQUE:
+        WS_LOCATION = CONFIGPARSER['DATA_COLLATION']['WS_QUERY'].format(i)
+        WSFILES = WSFILES.append(gbq.read_gbq(WS_LOCATION, project_id=CONFIGPARSER['SETTINGS']['PROJECT_ID']))
+    WS_DF = WSFILES.drop_duplicates(['timestamp', 'Location'], keep='last')
+except:
+    raise Exception('Weather Data not found in big query')
 
 ## **Weather Source Weather data cleaning**
 WS_DF['Date'] = pd.to_datetime(WS_DF['timestamp']).dt.date

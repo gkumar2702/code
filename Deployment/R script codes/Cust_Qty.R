@@ -1,4 +1,3 @@
-
 ##Loading the required packages 
 library('SparkR')
 sparkR.session()
@@ -16,13 +15,12 @@ year_month <- format(Sys.time(),"%Y-%m")
 year_month_1 <- format(as.Date(Sys.time(),format="%Y%m%d")+1,"%Y-%m")
 year_month_2 <- format(as.Date(Sys.time(),format="%Y%m%d")+2,"%Y-%m")
 
-system("gsutil cp gs://aes-analytics-0001-curated/Outage_Restoration/Model_object/model_MARS_2020_08_14_17_52_29.RDS /root/")
 ##Read the Required Forecasted weather File
-Weather_data <- read.df(paste0("gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/",year_month_1,"/forecast_data/",today,"/weathersource_daily_",tomorrow,".csv"),source = "csv", header="true",inferschema="true")
+Weather_data <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Weather_live_IPL/Weather_forecast_daily_TOM.csv"),source = "csv", header="true",inferschema="true")
 Weather_data <- SparkR :: collect(Weather_data)
 Weather_data <- na.omit(Weather_data)
 
-Weather_data1 <- read.df(paste0("gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/",year_month_2,"/forecast_data/",today,"/weathersource_daily_",day_after,".csv"),source = "csv", header="true",inferschema="true")
+Weather_data1 <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Weather_live_IPL/Weather_forecast_daily_DAY_A_TOM.csv"),source = "csv", header="true",inferschema="true")
 Weather_data1 <- SparkR :: collect(Weather_data1)
 Weather_data1 <- na.omit(Weather_data1)
 
@@ -151,10 +149,39 @@ m1 <- m1[keeps]
 m1$Predicted_Cust_Qty <-round(m1$Predicted_Cust_Qty)
 
 
+# Residuals for different ranges
+resid_0_2500 <- 1363.56
+resid_2500_4000 <- 1566.72
+resid_4000_7000 <- 3850.02
+resid_7000_20000 <- 5592.56
+resid_20000_ <- 4387.43
+
+m1$Customers_LL_95 <- ifelse(m1$Predicted_Cust_Qty <= 2500, (m1$Predicted_Cust_Qty-1.96*resid_0_2500),
+                                ifelse((m1$Predicted_Cust_Qty > 2500) & (m1$Predicted_Cust_Qty <= 4000), (m1$Predicted_Cust_Qty-1.96*resid_2500_4000),
+                                       ifelse((m1$Predicted_Cust_Qty > 4000) & (m1$Predicted_Cust_Qty <= 7000), (m1$Predicted_Cust_Qty-1.96*resid_4000_7000),
+                                              ifelse((m1$Predicted_Cust_Qty > 7000) & (m1$Predicted_Cust_Qty <= 20000), (m1$Predicted_Cust_Qty-1.96*resid_7000_20000),
+                                                     ifelse((m1$Predicted_Cust_Qty > 20000), (m1$Predicted_Cust_Qty-1.96*resid_20000_), NA)))))
+
+m1$Customers_UL_95 <- ifelse(m1$Predicted_Cust_Qty <= 2500, (m1$Predicted_Cust_Qty+1.96*resid_0_2500),
+                                ifelse((m1$Predicted_Cust_Qty > 2500) & (m1$Predicted_Cust_Qty <= 4000), (m1$Predicted_Cust_Qty+1.96*resid_2500_4000),
+                                       ifelse((m1$Predicted_Cust_Qty > 4000) & (m1$Predicted_Cust_Qty <= 7000), (m1$Predicted_Cust_Qty+1.96*resid_4000_7000),
+                                              ifelse((m1$Predicted_Cust_Qty > 7000) & (m1$Predicted_Cust_Qty <= 20000), (m1$Predicted_Cust_Qty+1.96*resid_7000_20000),
+                                                     ifelse((m1$Predicted_Cust_Qty > 20000), (m1$Predicted_Cust_Qty+1.96*resid_20000_), NA)))))
+
+# Converting Negative predictions to 0
+m1$Customers_LL_95[m1$Customers_LL_95 < 0] <- 0
+
+# Formatting decimals
+m1$Customers_LL_95 <- format(round(m1$Customers_LL_95, 0), nsmall = 0)
+m1$Customers_UL_95 <- format(round(m1$Customers_UL_95, 0), nsmall = 0)
+
+m1$Customers_LL_95 <- as.integer(m1$Customers_LL_95)
+m1$Customers_UL_95 <- as.integer(m1$Customers_UL_95)
+
 #Writing to GCS
 write.csv(m1,paste0('/root/Predicted_Cust_Qty','.csv',sep=""),row.names=FALSE)
 root_file<-paste0(' /root/Predicted_Cust_Qty','.csv',sep="")
 output_folder<-paste0('gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Deliverables/Outage_Duration/',year_month,'/',today,'/')
 system(paste0("gsutil cp ",root_file," ",output_folder))
-output_live<-paste0('gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/CUSTOMER_QUANTITY/')
+output_live<-paste0('gs://us-east4-composer-0001-8d07c42c-bucket/data/Outage_restoration/IPL/CUSTOMER_QUANTITY/')
 system(paste0("gsutil cp ",root_file," ",output_live))

@@ -1,6 +1,6 @@
 '''
 Author: Mu Sigma
-Updated: 09 Dec 2020
+Updated: 16 Dec 2020
 Version: 2
 Tasks : Load hypertuned Random forest model to predict total time for restoration
 and provide ETR's dataset and provided 0002 anbalytics locations
@@ -29,7 +29,7 @@ logger.setLevel(logging.INFO)
 
 # read config file
 CONFIGPARSER = ConfigParser(interpolation=ExtendedInterpolation())
-CONFIGPARSER.read('confignew0001.ini')
+CONFIGPARSER.read('config_ETR.ini')
 logging.info('Config File Loaded')
 logging.info('Config File Sections %s', CONFIGPARSER.sections())
 
@@ -47,7 +47,10 @@ def QC_CHECK_SHAPE_AND_COLUMNS(df):
 BUCKET_NAME = CONFIGPARSER['LOAD_AND_PREDICT']['STAGING_BUCKET']
 logging.info('Staging Bucket %s', BUCKET_NAME)
 
-DF_ADS_FINAL = pd.read_csv(BUCKET_NAME)
+try:
+    DF_ADS_FINAL = pd.read_csv(BUCKET_NAME)
+except:
+    raise Exception('Final curated dataset not found')
 
 DF_ADS_FINAL = DF_ADS_FINAL.loc[:, ~DF_ADS_FINAL.columns.str.contains('^Unnamed')]
 DF_ADS_FINAL = DF_ADS_FINAL.loc[:, ~DF_ADS_FINAL.columns.str.contains('^c0')]
@@ -74,9 +77,12 @@ STORM_PROFILES_LOCATION = BUCKET_NAME + '/Storm_Profiles/'
 logging.info('Location of Storm Profiles %s \n', STORM_PROFILES_LOCATION)
 STORM_PROFILES_FILES = []
 
-for i in UNIQUE:
-    FILENAME = STORM_PROFILES_LOCATION + 'storm_profiles_{}.csv'.format(i)
-    STORM_PROFILES_FILES.append(pd.read_csv(FILENAME))
+try:
+    for i in UNIQUE:
+        FILENAME = STORM_PROFILES_LOCATION + 'storm_profiles_{}.csv'.format(i)
+        STORM_PROFILES_FILES.append(pd.read_csv(FILENAME))
+except:
+    raise Exception('Storm Profiles Data not found')
 
 STORMPROFILES_DF = pd.concat(STORM_PROFILES_FILES)
 STORMPROFILES_DF.reset_index(drop=True, inplace=True)
@@ -134,11 +140,17 @@ logging.info('Cluster Profiles Added \n')
 QC_CHECK_SHAPE_AND_COLUMNS(DF_ADS_FINAL)
 
 ## **Load Hyper Tuned RF model**
-RF_MODEL = pd.read_pickle(CONFIGPARSER['LOAD_AND_PREDICT']['MODEL_LOCATION'])
+try:
+    RF_MODEL = pd.read_pickle(CONFIGPARSER['LOAD_AND_PREDICT']['MODEL_LOCATION'])
+except:
+    raise Exception('Model Object not loaded')
 logging.info("Model Loaded \n")
 
 MODEL_FEATURES = CONFIGPARSER['LOAD_AND_PREDICT']['MODEL_FEATURES']
-FEATURES_DF = pd.read_csv(MODEL_FEATURES)
+try:
+    FEATURES_DF = pd.read_csv(MODEL_FEATURES)
+except:
+    raise Exception('Model Features not loaded')
 
 FEATURE_LIST = list(FEATURES_DF.Features_List)
 logging.info('Features Loaded \n')

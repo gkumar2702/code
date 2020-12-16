@@ -1,6 +1,6 @@
 '''
 Author - Mu Sigma
-Updated: 9 Dec 2020
+Updated: 16 Dec 2020
 Version: 2
 Tasks: Live data processing, weather data addition,
 post processing and profiles addition, Regression run
@@ -30,12 +30,12 @@ JOB_NAME = 'outage_end_end'
 SCRIPT_LOC = 'gs://us-east4-composer-0001-40ca8a74-bucket/data'\
     '/Outage_restoration/IPL/Python_scripts/'
 # specify location of the config file
-CONFIG_FILE = 'gs://aes-analytics-0001-curated/Outage_Restoration'\
-    '/Live_Data_Curation/Config/confignew0001.ini'
+CONFIG_FILE = 'gs://us-east4-composer-0001-40ca8a74-bucket/data'\
+    '/Outage_restoration/IPL/Config_Files/config_ETR.ini'
 # name of the python clsuter being used
 CLUSTER = 'dp-outage-python-0001'
 
-START_TIME = dt.datetime(2020, 12, 8, 19, 50, 00)
+START_TIME = dt.datetime(2020, 12, 16, 12, 30, 00)
 
 # =================== DAG Arguments =================================
 DEFAULT_ARGS = {

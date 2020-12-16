@@ -1,20 +1,39 @@
-"""
-DAG for diagnostic view dashboard
-"""
+'''
+Author - Mu Sigma
+Updated: 15 Dec 2020
+Version: 2
+Tasks: Merge actuals with predicted values of the outages and
+Compute actuals no of outages and customers affected
+and aggregate to day level to compare with predictions
+Schedule: Everyday at 7 AM
+Environment: Composer-0001
+Run-time environments: Pyspark,SparkR and python 3.7 callable
+'''
 
+# standard library imports 
 import datetime
+
+# third party imports
 from airflow.models import Variable
 from airflow.contrib.operators.dataproc_operator import DataProcPySparkOperator
 from airflow.models import DAG
 
 # ===================Variables=================================
 ENV = Variable.get("env")
-print(ENV)
+
+# name of the job performed in airflow
 JOB_NAME = 'outage-diagnostic-backend'
-PROJECT = 'aes-datahub-'+ENV
+# name of the composer to be used
 COMPOSER_NAME = 'composer-'+ENV
-COMPOSER_BUCKET = 'us-east4-composer-0001-40ca8a74-bucket'
-DATAPROC_BUCKET = 'aes-datahub-0001-temp'
+# name of the python clsuter being used
+CLUSTER_NAME = 'dp-outage-python-0001'
+# location of the scripts
+SCRIPT_LOC = '/home/airflow/gcs/data/Outage_restoration/'\
+             'IPL/Python_scripts/'
+# specify location of the config file
+CONFIG_FILE = 'gs://us-east4-composer-0001-40ca8a74-bucket/data/'\
+              'Outage_restoration/IPL/Config_Files/config_ETR.ini'
+# setting up start time 
 YESTERDAY = datetime.datetime.combine(
     datetime.datetime.today() - datetime.timedelta(1),
     datetime.datetime.min.time())
@@ -23,7 +42,7 @@ YESTERDAY = datetime.datetime.combine(
 DEFAULT_ARGS = {
     'start_date': YESTERDAY,
     'email_on_failure': True,
-    'email': ['musigma.bkumar.c@aes.com', 'ms.gkumar.c@aes.com', 'eric.nussbaumer@aes.com'],
+    'email': ['musigma.skumar.c@aes.com'],
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': datetime.timedelta(minutes=1),
@@ -43,37 +62,35 @@ with DAG(
         schedule_interval='0 7 * * *'
 ) as dag:
     DIAGNOSTIC = DataProcPySparkOperator(task_id='Diagnostic_Daily_Append',
-                                         main='/home/airflow/gcs/data/Outage_restoration/'\
-										       'IPL/Python_scripts/diagnostic_view_pylint.py',
+                                         main=SCRIPT_LOC +
+                                         'diagnostic_view_pylint.py',
+                                         gcp_conn_id='google_cloud_default',
+                                         cluster_name=CLUSTER_NAME,
+                                         region='us-east4',
+                                         job_error_states=['ERROR'],
+                                         files=CONFIG_FILE,
+                                         dag=dag,
                                          arguments=None,
                                          archives=None,
                                          pyfiles=None,
-                                         files=None,
-                                         cluster_name='dp-outage-python-0001',
                                          dataproc_pyspark_properties=None,
                                          dataproc_pyspark_jars=None,
-                                         gcp_conn_id='google_cloud_default',
-                                         delegate_to=None,
-                                         region='us-east4',
-                                         job_error_states=['ERROR'],
-                                         dag=dag
-                                        )
+                                         delegate_to=None)
 
     STORM_LEVEL = DataProcPySparkOperator(task_id='Storm_Diagnostic_Daily_Append',
-                                          main='/home/airflow/gcs/data/Outage_restoration/IPL/'\
-										        'Python_scripts/storm_level_comparison_pylint.py',
+                                          main=SCRIPT_LOC +
+                                          'storm_level_comparison_pylint.py',
+                                          gcp_conn_id='google_cloud_default',
+                                          cluster_name=CLUSTER_NAME,
+                                          region='us-east4',
+                                          job_error_states=['ERROR'],
+                                          files=CONFIG_FILE,
+                                          dag=dag,
                                           arguments=None,
                                           archives=None,
                                           pyfiles=None,
-                                          files=None,
-                                          cluster_name='dp-outage-python-0001',
                                           dataproc_pyspark_properties=None,
                                           dataproc_pyspark_jars=None,
-                                          gcp_conn_id='google_cloud_default',
-                                          delegate_to=None,
-                                          region='us-east4',
-                                          job_error_states=['ERROR'],
-                                          dag=dag
-                                          )
+                                          delegate_to=None)
 
 DIAGNOSTIC >> STORM_LEVEL

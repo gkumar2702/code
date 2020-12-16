@@ -46,14 +46,14 @@ pylint_check:
     - score_dag=$(tail -2 lint_dag6.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_dag%.*}
     - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
-    - pylint --exit-zero outage_weather_pipeline.py > lint_dag7.txt
+    - pylint --exit-zero outage_ipl_forecasts_email.py > lint_dag7.txt
     - score_dag=$(tail -2 lint_dag7.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_dag%.*}
     - if [ ${score_dag%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
     - cd ../
     - pwd
     - cd Development/
-    - pylint --exit-zero output_collation_pylint.py > lint_sc_one.txt
+    - pylint --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)' output_collation_pylint.py > lint_sc_one.txt
     - score_sc=$(tail -2 lint_sc_one.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
@@ -65,7 +65,7 @@ pylint_check:
     - score_sc=$(tail -2 lint_sc_three.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
-    - pylint --exit-zero diagnostic_view_pylint.py > lint_sc1.txt
+    - pylint --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)'  diagnostic_view_pylint.py > lint_sc1.txt
     - score_sc=$(tail -2 lint_sc1.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -gt 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
@@ -85,18 +85,18 @@ pylint_check:
     - score_sc=$(tail -2 lint_sc_eight.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
-    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* pca_storm_level.py > lint_sc_nine.txt
+    - pylint -j 0 --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)'  --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* pca_storm_level_pylint.py > lint_sc_nine.txt
     - score_sc=$(tail -2 lint_sc_nine.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
-    - pylint -j 0 --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)' weather_pipeline_script_pylint.py > lint_sc_eleven.txt
+    - pylint -j 0 --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)' forecasts_email_alert_pylint.py > lint_sc_eleven.txt
     - score_sc=$(tail -2 lint_sc_eleven.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
     - cd ..
     - cd Deployment
     - cd "Python script codes"
-    - pylint -j 0 --exit-zero --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* load_predict_pylint.py > lint_sc_ten.txt
+    - pylint -j 0 --exit-zero --init-hook='import sys; sys.setrecursionlimit(10000)' --ignored-modules=pyspark.sql.functions --extension-pkg-whitelist=pyspark --generated-members=pyspark.* load_predict_pylint.py > lint_sc_ten.txt
     - score_sc=$(tail -2 lint_sc_ten.txt | awk '{print $7}' | cut -d/ -f1)
     - echo ${score_sc%.*}
     - if [ ${score_sc%.*} -ge 5 ]; then echo "PASSED"; else echo "FAILED" && exit 1; fi
@@ -127,5 +127,6 @@ deploying_files_into_gcs-prod:
     - gsutil rsync "Deployment/Python script codes/"  gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/Python_scripts/
     - gsutil rsync "Deployment/R script codes/"  gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/R_scripts/
     - gsutil rsync "Scheduling/"  gs://us-east4-composer-0001-40ca8a74-bucket/dags/
+    - gsutil rsync "Development/Config_file/"  gs://us-east4-composer-0001-40ca8a74-bucket/data/Outage_restoration/IPL/Config_Files/
 
 

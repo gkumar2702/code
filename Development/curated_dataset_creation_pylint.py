@@ -1,6 +1,6 @@
 '''
 Author: Mu Sigma
-Updated: 09 Dec 2020
+Updated: 16 Dec 2020
 Version: 2
 Tasks: Python script to create curated dataset and features like
 Outages in LAST N HOURS, CAUSE, OCCURN, clue day flags
@@ -31,7 +31,7 @@ logger.setLevel(logging.INFO)
 
 # read config file
 CONFIGPARSER = ConfigParser(interpolation=ExtendedInterpolation())
-CONFIGPARSER.read('confignew0001.ini')
+CONFIGPARSER.read('config_ETR.ini')
 logging.info('Config File Loaded')
 logging.info('Config File Sections %s', CONFIGPARSER.sections())
 
@@ -47,7 +47,11 @@ def QC_CHECK_SHAPE_AND_COLUMNS(df):
 
 ## **Read OMS Weather Source curated dataset**
 BUCKET_NAME = CONFIGPARSER['CURATED_DATA']['CURATED_DATA_STAGING_PATH']
-DF_OMSDS = pd.read_csv(BUCKET_NAME)
+
+try:
+    DF_OMSDS = pd.read_csv(BUCKET_NAME)
+except:
+    raise Exception('OMS preprocessed weather added data not found')
 
 DF_OMSDS = DF_OMSDS.loc[:, ~DF_OMSDS.columns.str.contains('^Unnamed')]
 DF_OMSDS = DF_OMSDS.loc[:, ~DF_OMSDS.columns.str.contains('^_c0')]
@@ -281,7 +285,10 @@ logging.info('Column Names in LIVE OUTAGES: %s', list(LIVE_OUTAGES.columns))
 ## **Write to Big Query Tables**
 LIVE_OUTAGES.columns = LIVE_OUTAGES.columns.str.replace('.', '_')
 CURATED_QUERY = 'Select * from ' + CONFIGPARSER['SETTINGS']['BQ_CURATED_DATASET']
-CURATED_DATA = gbq.read_gbq(CURATED_QUERY, project_id=CONFIGPARSER['SETTINGS']['PROJECT_ID'])
+try:
+    CURATED_DATA = gbq.read_gbq(CURATED_QUERY, project_id=CONFIGPARSER['SETTINGS']['PROJECT_ID'])
+except:
+    raise Exception('Curated Dataset not found')
 logging.info('Big Query table loaded \n')
 
 CURATED_DATA.append(LIVE_OUTAGES)

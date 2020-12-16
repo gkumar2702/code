@@ -1,33 +1,69 @@
 """
 Authored: Mu Sigma
-Updated: 26 Nov 2020
-Version: 1.5
+Updated: 15 Dec 2020
+Version: 2
 Description: Backend script to merge actuals with predicted values of the outages
-and write as a BQ table
+from the OMS system and model predictions and write as a BQ table
 Output table: mds_outage_restoration.IPL_Diagnostic_View
 """
 
-# standard library imports 
-import warnings
+# standard library imports
+import ast
 import logging
 import datetime as dt
 from datetime import datetime
 import pandas as pd
 import numpy as np
-from google.cloud import storage
 import pandas_gbq as gbq
+from configparser import ConfigParser, ExtendedInterpolation
 
-# import logging
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+# third party imports
+from google.cloud import storage
 
-# **Check all Live Files present in Bucket**
+# Setup logs
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO,
+                    datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# read config file
+CONFIGPARSER = ConfigParser(interpolation=ExtendedInterpolation())
+CONFIGPARSER.read('config_ETR.ini')
+logging.info('Config File Loaded')
+logging.info('Config File Sections %s', CONFIGPARSER.sections())
+
+# reading settings from config file
+try:
+    BUCKET_NAME_RAW = CONFIGPARSER['SETTINGS_IPL_DIAG']['BUCKET_NAME_RAW']
+    BUCKET_NAME = CONFIGPARSER['SETTINGS_IPL_DIAG']['BUCKET_NAME']
+    prefix=CONFIGPARSER['SETTINGS_IPL_DIAG']['prefix']
+    PROJECT_ID = CONFIGPARSER['SETTINGS_IPL_DIAG']['PROJECT_ID']
+    OP_BQ_SCHEMA = CONFIGPARSER['SETTINGS_IPL_DIAG']['OP_BQ_SCHEMA']
+    OP_BQ_TAB = CONFIGPARSER['SETTINGS_IPL_DIAG']['OP_BQ_TAB']
+    logging.info("Settings loaded from configuration file")
+except:
+    raise Exception('Config Files failed to load')
+
+
+# reading required lists from config files
+OCCUR_REMOV = ast.literal_eval(CONFIGPARSER.get("DIAG_VIEW", "OCCURN_REMOV"))
+OCCUR_REMOV = list(OCCUR_REMOV)
+NUMERICAL_COLS = ast.literal_eval(CONFIGPARSER.get("DIAG_VIEW", "NUMERICAL_COLS"))
+NUMERICAL_COLS = list(NUMERICAL_COLS)
+NUMERICAL_COLS_ETR = ast.literal_eval(CONFIGPARSER.get("DIAG_VIEW", "NUMERICAL_COLS_ETR"))
+NUMERICAL_COLS_ETR = list(NUMERICAL_COLS_ETR)
+DF_PRED = CONFIGPARSER['DIAG_VIEW']['DF_PRED']
+DF_DIAG = CONFIGPARSER['DIAG_VIEW']['DF_DIAG']
+logging.info("lists and other variables loaded from configuration file")
+
+# check all Live Files present in Bucket
 CURRENT_DATE = datetime.today().strftime('%Y-%m-%d')
 logging.info(CURRENT_DATE)
 CLIENT = storage.Client()
-BUCKET_NAME = 'aes-datahub-0001-raw'
-BUCKET = CLIENT.get_bucket(BUCKET_NAME)
+BUCKET = CLIENT.get_bucket(BUCKET_NAME_RAW)
 
-BLOBS = BUCKET.list_blobs(prefix='OMS/' + CURRENT_DATE)
+BLOBS = BUCKET.list_blobs(prefix=prefix + CURRENT_DATE)
 DIRLIST = []
 
 for blob in BLOBS:
@@ -38,21 +74,28 @@ _MATCHING_FACILITY = [s for s in DIRLIST if "FACILITY_IPL_Daily" in s]
 _MATCHING_LIVE_FACILITY = [s for s in _MATCHING_FACILITY if "HIS" in s]
 logging.info('HIS FACILITY_IPL_Daily TABLE %s \n', _MATCHING_LIVE_FACILITY)
 
-# **Read Live Files in Buckets**
-BUCKET_NAME = 'gs://aes-datahub-0001-raw/'
+# read live files present in buckets
 logging.info('Todays Date %s \n', CURRENT_DATE)
-
-FACILITY = pd.read_csv(BUCKET_NAME + _MATCHING_LIVE_FACILITY[0], encoding="ISO-8859-1", sep=",")
+try:
+    FACILITY = pd.read_csv(BUCKET_NAME + _MATCHING_LIVE_FACILITY[0], encoding="ISO-8859-1", sep=",")
+except:
+    raise Exception("Failed to load live Facility data")
 logging.info(BUCKET_NAME + _MATCHING_LIVE_FACILITY[0])
 logging.info('HIS Table name %s \n', BUCKET_NAME + _MATCHING_LIVE_FACILITY[0])
 
-## QC checks
+SHAPE = FACILITY.shape[0]
+if SHAPE != 0:
+    pass
+else:
+    raise Exception('Facility table contains 0 rows')
+
+# QC checks
 logging.info('****QC Check****')
-logging.info('shape of HIS Incident Device Table %s \n', FACILITY.shape)
+logging.info('Shape of HIS Incident Device Table %s \n', FACILITY.shape)
 logging.info('****QC Check****')
 logging.info('No of Distinct INCIDENT_ID in INCIDENT_DEVICE Table %s \n', FACILITY.FAC_JOB_ID.nunique())
 
-# APPLYING FILTERS FOR CORRECT DATA INPUTS
+# applying filters for correct data input
 # customer quantity greater than 0
 logging.info('Filter for customer quantity greater than 0')
 logging.info("Rows left after checking for INCIDENTS whose CUSTOMER QUANTITY IS > 0")
@@ -84,21 +127,7 @@ logging.info('Shape of Facility job table %s \n', FACILITY.shape)
 
 # removing occurence codes starting with cancel, found ok and duplicate
 logging.info('Removing CLUE_CD which start with 0 but do not start with 00 \n')
-
 logging.info('Rows left after removing OCCURN_CD which have CANCEL, FOUND OK or DUPLICATE \n')
-OCCUR_REMOV = [30003001, 33003301, 33003302, 34003400, 34003401, 34003402, 34003403, 34003404,
-               34003405, 34003406, 34003407, 34003408, 34003409, 35003500,
-               35003501, 35003502, 35003503, 35003504, 35003505, 35003506, 35003507, 35003508,
-               36003600, 36003601, 36003602, 36003603, 36003604, 36003605,
-               36003606, 36003607, 36003608, 37003703, 38003802, 38003803, 38003804, 38003807,
-               39003910, 41004100, 41004101, 41004102, 48004800, 48004802,
-               48004803, 49004900, 49004901, 49004902, 50005000, 50005001, 50005002, 52005200,
-               52005201, 52005202, 52005203, 52005204, 52005205, 52005206,
-               52005207, 53005300, 53005301, 53005302, 53005303, 53005304, 53005305, 53005306,
-               53005307, 53005308, 53005309, 53005310, 54005400, 54005401,
-               54005402, 54005403, 54005404, 54005405, 34003410, 30003000, 36503650, 36503651,
-               36503652, 36503653, 36503654, 36503655, 36503656, 36503657,
-               36503658]
 FACILITY = FACILITY[~(FACILITY.OCCURN_CD.isin(OCCUR_REMOV))]
 logging.info('Shape of Facility job table %s \n', FACILITY.shape)
 
@@ -106,16 +135,17 @@ logging.info('Shape of Facility job table %s \n', FACILITY.shape)
 # start ads creation at numerical level 'INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID', 'DNI_EQUIP_TYPE'
 # 1.1 Aggregate numerical columns at INCIDENT_ID level to keep all unique INCIDNET_ID's
 DF_NUMERICAL = FACILITY.groupby(['INCIDENT_ID', 'STRCTUR_NO', 'CIRCT_ID',
-                            'DNI_EQUIP_TYPE'], as_index=False).agg({'CALL_QTY':'sum',
-                                                                    'DOWNSTREAM_CUST_QTY':'sum',
-                                                                    'KVA_VAL':'max',
-                                                                    'DOWNSTREAM_KVA_VAL':'max',
-                                                                    'CREATION_DATETIME' : 'min',
-                                                                    'ENERGIZED_DATETIME':'max',
-                                                                    'SUBST_ID': 'min',
-                                                                    'MAJ_OTG_ID' : 'max',
-                                                                    'ETR_DATETIME' : 'max'})
+                                 'DNI_EQUIP_TYPE'], as_index=False).agg({'CALL_QTY':'sum',
+                                                                         'DOWNSTREAM_CUST_QTY':'sum',
+                                                                         'KVA_VAL':'max',
+                                                                         'DOWNSTREAM_KVA_VAL':'max',
+                                                                         'CREATION_DATETIME' : 'min',
+                                                                         'ENERGIZED_DATETIME':'max',
+                                                                         'SUBST_ID': 'min',
+                                                                         'MAJ_OTG_ID' : 'max',
+                                                                         'ETR_DATETIME' : 'max'})
 
+# rename downstream customer quantity to customer quantity
 DF_NUMERICAL.rename(columns={'DOWNSTREAM_CUST_QTY' : 'CUST_QTY'}, inplace=True)
 
 DF_NUMERICAL['INCIDENT_ID'] = DF_NUMERICAL['INCIDENT_ID'].astype(np.int64)
@@ -136,44 +166,30 @@ DF_NUMERICAL['TTR'] = (DF_NUMERICAL.ENERGIZED_DATETIME - DF_NUMERICAL.CREATION_D
 DF_NUMERICAL['OMS_ETR'] = (DF_NUMERICAL.ETR_DATETIME - DF_NUMERICAL.CREATION_DATETIME).dt.total_seconds().div(60).round(4)
 DF_NUMERICAL['OMS_ETR'] = DF_NUMERICAL['OMS_ETR']/60
 
-
 # QC checks every value should be one
 DF_NUMERICAL['TTR'] = DF_NUMERICAL['TTR'].round(decimals=0)
 DF_NUMERICAL['OMS_ETR'] = DF_NUMERICAL['OMS_ETR'].round(decimals=0)
 
 def check_level(group):
-    '''check the level'''
+    '''
+    Input - Dataframe with all data operations
+    Output - 1 1 1 1 if the level of the table is as desired
+    '''
     logging.info(len(group))
 
-logging.info(DF_NUMERICAL.shape)
+logging.info('Checking shape of the numerical columns \n', DF_NUMERICAL.shape)
 
-DF_FINAL = DF_NUMERICAL[['OUTAGE_ID',
-                         'INCIDENT_ID',
-                         'STRCTUR_NO',
-                         'CIRCT_ID',
-                         'DNI_EQUIP_TYPE',
-                         'CREATION_DATETIME',
-                         'ENERGIZED_DATETIME',
-                         'TTR']]
 
+DF_FINAL = DF_NUMERICAL[NUMERICAL_COLS]
 DF_FINAL.drop_duplicates(subset='OUTAGE_ID',keep='last', inplace=True)
-
-DF_ETR = DF_NUMERICAL[['OUTAGE_ID',
-                         'INCIDENT_ID',
-                         'STRCTUR_NO',
-                         'CIRCT_ID',
-                         'DNI_EQUIP_TYPE',
-                         'CREATION_DATETIME',
-                         'ENERGIZED_DATETIME',
-                         'TTR',
-                         'ETR_DATETIME',
-                         'OMS_ETR']]
-
+DF_ETR = DF_NUMERICAL[NUMERICAL_COLS_ETR]
 DF_ETR.drop_duplicates(subset='OUTAGE_ID',keep='last', inplace=True)
-logging.info(DF_FINAL.shape)
+logging.info('Checking shape of the DF_FINAL dataframe ', DF_FINAL.shape)
 
-DF_PRED = 'SELECT * FROM aes-analytics-0001.mds_outage_restoration.IPL_Predictions'
-DF_PRED = gbq.read_gbq(DF_PRED, project_id="aes-analytics-0001")
+try:
+    DF_PRED = gbq.read_gbq(DF_PRED, project_id=PROJECT_ID)
+except:
+    raise Exception("Failed to load predictions from Bigquery table")
 PREDICTIONS = list(DF_PRED['OUTAGE_ID'].unique())
 DF_PRED.drop_duplicates(subset='OUTAGE_ID', inplace=True)
 
@@ -194,7 +210,7 @@ DF_DIAGNOSTIC.drop(DF_DIAGNOSTIC.filter(regex='_y').columns, axis=1, inplace=Tru
 DF_DIAGNOSTIC['TTR'] = DF_DIAGNOSTIC['TTR'].astype(np.int64)
 DF_DIAGNOSTIC['ETR'] = DF_DIAGNOSTIC['ETR'].astype(np.int64)
 
-## adding OMS ETRs to the diagnostic
+# adding OMS ETRs to the diagnostic
 DF_ETR_BS = DF_ETR[DF_ETR.OMS_ETR>=0]
 DF_ETR_STORM = DF_ETR[DF_ETR.OMS_ETR<0]
 DF_ETR_STORM.OMS_ETR = np.nan
@@ -204,9 +220,10 @@ DF_DIAGNOSTIC = DF_DIAGNOSTIC.merge(DF_ETR_FINAL[['OUTAGE_ID', 'ETR_DATETIME', '
                           right_on=['OUTAGE_ID'])
 
 # reading the diagnostic table
-DF_DIAG = 'SELECT * FROM aes-analytics-0001.mds_outage_restoration.IPL_Diagnostic_View'
-DF_DIAG = gbq.read_gbq(DF_DIAG, project_id="aes-analytics-0001")
-
+try:
+    DF_DIAG = gbq.read_gbq(DF_DIAG, project_id=PROJECT_ID)
+except:
+    raise Exception("Failed to load diagnostic table from Bigquery table")
 DF_DIAG.drop_duplicates(inplace=True)
 logging.info("Previous PREDICTIONS read successfully")
 
@@ -214,7 +231,7 @@ shape = DF_DIAGNOSTIC.shape[0]
 if shape != 0:
     pass
 else:
-    raise Exception('No new Additions, All outages are already fed in the previos run')
+    raise Exception('No new Additions, All outages are already fed in the previous run')
 
 # appending the two tables
 DF_FINAL = DF_DIAG.append(DF_DIAGNOSTIC)
@@ -228,8 +245,13 @@ DF_FINAL['TTR'] = DF_FINAL['TTR'].astype(np.float64)
 DF_FINAL['ETR'] = DF_FINAL['ETR'].astype(np.float64)
 DF_FINAL['OMS_ETR'] = DF_FINAL['OMS_ETR'].astype(np.float64)
 
-# **Write table to Big Query**
-DF_FINAL.to_gbq('mds_outage_restoration.IPL_Diagnostic_View', project_id='aes-analytics-0001',
-                chunksize=None, reauth=False,
-                if_exists='replace', auth_local_webserver=False, table_schema=None,
-                location=None, progress_bar=True, credentials=None)
+# Write table to Big Query
+try:
+    OP_BQ_TAB_PATH = """{schema}.{output_table}""".format(schema=OP_BQ_SCHEMA,
+                                                          output_table=OP_BQ_TAB)
+    DF_FINAL.to_gbq(OP_BQ_TAB_PATH, project_id=PROJECT_ID,
+                    chunksize=None, reauth=False,
+                    if_exists='replace', auth_local_webserver=False, table_schema=None,
+                    location=None, progress_bar=True, credentials=None)
+except:
+    raise Exception("Failed to write to Bigquery table")

@@ -1,132 +1,170 @@
-""""
-Script for getting the weather source data for Indianapolis Power & Light
-"""
+'''
+Author - Mu Sigma
+Updated: 15 Dec 2020
+Version: 2
+Tasks:Script for getting the weather source data for Indianapolis Power & Light
+Environment: Composer-0002
+Run-time environments: Pyspark,SparkR and python 3.7 callable
+'''
 
-from datetime import datetime, timedelta
+# standard library imports
+import logging
+import re
+from datetime import datetime, timedelta, date, timedelta
 import warnings
 import json
-import requests #to get info from server
+from pandas.io import gbq
 import pandas as pd
 from pandas.io.json import json_normalize
+from sklearn.preprocessing import StandardScaler
+import requests #to get info from server
 from pytz import timezone #date-time conversion
-warnings.filterwarnings('ignore')
+from configparser import ConfigParser, ExtendedInterpolation
 
-pd.set_option('display.max_rows', 1000)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 2000)
-pd.options.display.float_format = '{:.2f}'.format
+# setup logs
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO,
+                    datefmt='%Y-%m-%d %H:%M:%S')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-# proxy settings for api calls
-HEADERS = {'User-Agent': 'Chrome/78and.0.3865.90'}
-HTTP_PROXY = "http://proxy.ouraes.com:8080"
-HTTPS_PROXY = "https://proxy.ouraes.com:8080"
-FTP_PROXY = "ftp://proxy.ouraes.com:8080"
+# read config file
+CONFIGPARSER = ConfigParser(interpolation=ExtendedInterpolation())
+CONFIGPARSER.read('config_storm.ini')
+logging.info('Config File Loaded')
+logging.info('Config File Sections %s', CONFIGPARSER.sections())
 
-PROXY_DICT = {"http"  : HTTP_PROXY, "https" : HTTPS_PROXY, "ftp"   : FTP_PROXY}
+# configuration setup 
+try:
+    WS_LOCATION = CONFIGPARSER['SETTINGS_WEATHER_DAILY']['WS_LOCATION']
+    PROJECT_ID = CONFIGPARSER['SETTINGS_WEATHER_DAILY']['PROJECT_ID']
+    HIST_OP = CONFIGPARSER['SETTINGS_WEATHER_DAILY']['HIST_OP']
+    FORC_OP = CONFIGPARSER['SETTINGS_WEATHER_DAILY']['FORC_OP']
+except:
+    raise Exception("Config file failed to load")
 
+# defining dates to be used for weather data pull
+CURRENT_DATE = date.today()
+logging.info('Current Datetime %s \n', CURRENT_DATE)
+TODAY = pd.to_datetime(CURRENT_DATE).strftime('%Y-%m-%d')
+logging.info('Todays Date %s \n', TODAY)
+TOMORROW1 = CURRENT_DATE + timedelta(1)
+logging.info("Tomorrow's Date %s \n", TOMORROW1)
+DAYAFTER1 = CURRENT_DATE + timedelta(2)
+logging.info("Day after tomorrow's Date %s \n", DAYAFTER1)
+YESTERDAY = CURRENT_DATE - timedelta(1)
+logging.info("Yesterday's Date %s \n", YESTERDAY)
+YESTERDAY1 = CURRENT_DATE - timedelta(2)
+logging.info('Day before yesterday Date %s \n', YESTERDAY1)
 
-def ws_historical_data(start, end, lat, long, period='day', fields='all'):
-    '''
-  If duration is more than 1 year separate calls should be used
-  Timestamp should be converted to ISO 8601 format
-  Docstring with examples and function return values:
-
-  Input :
-  start - (%Y-%m-%d) format
-  end - (%Y-%m-%d) format
-  lat - latitude
-  long - longitude
-  period - hour, day (default=day)
-
-  Output : return a collection of weather historical data for a latitude/longitude point
-
-  '''
-
-    key = 'e721181f854ac2268ee8'
-    start = pd.to_datetime(start, format='%Y-%m-%d')
-    end = pd.to_datetime(end, format='%Y-%m-%d')
-
-    start = start.strftime('%Y-%m-%dT%H:%M:%S')
-    end = end.strftime('%Y-%m-%dT%H:%M:%S')
-
-    weather_ = pd.DataFrame()
-    link = 'https://api.weathersource.com/v1/'+key+'/points/'+lat+','+long\
-	       +'/history.json?period='+period+'&timestamp_between='+start+','+end+'&fields='+fields
-    print(link)
-    response = requests.get(link, headers=HEADERS, proxies=PROXY_DICT)
-    json_obj = json.loads(response.content.decode('utf-8'))
-    weather_ = json_normalize(json_obj)
-
-    return weather_
-
-
-def ws_forecast_data(start, end, lat, long, period='day', fields='all'):
-    '''
-  Timestamp should be converted to ISO 8601 format
-  Docstring with examples and function return values:
-
-  Input :
-  start - (%Y-%m-%d) format
-  end - (%Y-%m-%d) format
-  lat - latitude
-  long - longitude
-  period - hour, day (default=day)
-
-  Output : returns forecast data upto 15 days ahead of forecast data and 240 hours of hourly
-  weather data for a latitude/longitude point
-  '''
-
-    key = 'e721181f854ac2268ee8'
-    start = pd.to_datetime(start, format='%Y-%m-%d')
-    end = pd.to_datetime(end, format='%Y-%m-%d')
-
-    start = start.strftime('%Y-%m-%dT%H:%M:%S')
-    end = end.strftime('%Y-%m-%dT%H:%M:%S')
-
-    weather_ = pd.DataFrame()
-    link = 'https://api.weathersource.com/v1/'+key+'/points/'+lat+','+long\
-           +'/forecast.json?period='+period+'&timestamp_between='+start+','+end+'&fields='+fields
-    print(link)
-    response = requests.get(link, headers=HEADERS, proxies=PROXY_DICT)
-    json_obj = json.loads(response.content.decode('utf-8'))
-    weather_ = json_normalize(json_obj)
-
-    return weather_
+# reading weather data for today
+TODAY_DATA = gbq.read_gbq(WS_LOCATION.format(TODAY), project_id=PROJECT_ID)
+TODAY_DATA.drop_duplicates(['timestamp', 'Location'], keep='last', inplace=True)
+TODAY_DATA.reset_index(drop=True, inplace=True)
+SHAPE = TODAY_DATA.shape[0]
+if SHAPE != 0:
+    logging.info('Weather data for today imported')
+    pass
+else:
+    logging.info("Today's weather data not available")
 
 
-SITES_LATITUDE = {
-    'Marker 1' : '39.9613', 'Marker 2' : '39.8971', 'Marker 3' : '39.9060',
-    'Marker 4' : '39.9024', 'Marker 5' : '39.8960', 'Marker 6' : '39.8339',
-    'Marker 7' : '39.8412', 'Marker 8' : '39.8381', 'Marker 9' : '39.8386',
-    'Marker 10' : '39.7579', 'Marker 11' : '39.7621', 'Marker 12' : '39.7621',
-    'Marker 13' : '39.7695', 'Marker 14' : '39.6617', 'Marker 15' : '39.6639',
-    'Marker 16' : '39.6702', 'Marker 17' : '39.6744', 'Marker 18' : '39.5909',
-    'Marker 19' : '39.5295', 'Marker 20' : '39.5475'
-    }
+# reading weather data for tomorrow
+try:
+    NEW_DATA = gbq.read_gbq(WS_LOCATION.format(TOMORROW1), project_id=PROJECT_ID)
+except:
+    raise Exception("Failed to load Weather data for tomorrow from Bigquery table")
+NEW_DATA.drop_duplicates(['timestamp', 'Location'], keep='last', inplace=True)
+NEW_DATA.reset_index(drop=True, inplace=True)
+SHAPE = NEW_DATA.shape[0]
+if SHAPE != 0:
+    logging.info('Weather data for tomorrow imported')
+    pass
+else:
+    logging.info("Tomorrow's weather data not available")
 
-# longitude of the location markers
-SITES_LONGITUDE = {
-    'Marker 1' : '-86.4034', 'Marker 2' : '-86.3045', 'Marker 3' : '-86.2001',
-    'Marker 4' : '-86.0738', 'Marker 5' : '-85.9783', 'Marker 6' : '-86.3155',
-    'Marker 7' : '-86.2056', 'Marker 8' : '-86.0985', 'Marker 9' : '-85.9811',
-    'Marker 10' : '-86.3155', 'Marker 11' : '-86.2042', 'Marker 12' : '-86.0923',
-    'Marker 13' : '-85.9708', 'Marker 14' : '-86.2935', 'Marker 15' : '-86.1823',
-    'Marker 16' : '-86.0669', 'Marker 17' : '-85.9557', 'Marker 18' : '-86.4212',
-    'Marker 19' : '-86.5874', 'Marker 20' : '-86.2743'
-    }
+# reading weather data for day after tomorrow
+try:
+    NEW_DATA2 = gbq.read_gbq(WS_LOCATION.format(DAYAFTER1), project_id=PROJECT_ID)
+except:
+    raise Exception("Failed to load Weather data for "\
+                    "day after tomorrow from Bigquery table")
+NEW_DATA2.drop_duplicates(['timestamp', 'Location'], keep='last', inplace=True)
+NEW_DATA2.reset_index(drop=True, inplace=True)
+SHAPE = NEW_DATA2.shape[0]
+if SHAPE != 0:
+    logging.info('Weather data for day after tomorrow imported')
+    pass
+else:
+    logging.info("Weather data for day after tomorrow not available")
+
+# reading weather data for yesterday
+try:
+    HIST_DATA = gbq.read_gbq(WS_LOCATION.format(YESTERDAY), project_id=PROJECT_ID)
+except:
+    raise Exception("Failed to load Weather data for yesterday from Bigquery table")
+HIST_DATA.drop_duplicates(['timestamp', 'Location'], keep='last', inplace=True)
+HIST_DATA.reset_index(drop=True, inplace=True)
+SHAPE = HIST_DATA.shape[0]
+if SHAPE != 0:
+    logging.info('Weather data for yesterday imported')
+    pass
+else:
+    logging.info("Weather data for yesterday not available")
 
 
-LOCATION_MARKER = ['Marker 1', 'Marker 2', 'Marker 3', 'Marker 4', 'Marker 5', 'Marker 6',
-                   'Marker 7', 'Marker 8', 'Marker 9', 'Marker 10', 'Marker 11', 'Marker 12',
-                   'Marker 13', 'Marker 14', 'Marker 15', 'Marker 16', 'Marker 17', 'Marker 18',
-                   'Marker 19', 'Marker 20']
+# reading weather data for day before yesterday
+try:
+    HIST_DATA1 = gbq.read_gbq(WS_LOCATION.format(YESTERDAY1), project_id=PROJECT_ID)
+except:
+    raise Exception("Failed to load Weather data for day before yesterday from Bigquery table")
+HIST_DATA1.drop_duplicates(['timestamp', 'Location'], keep='last', inplace=True)
+HIST_DATA1.reset_index(drop=True, inplace=True)
+SHAPE = HIST_DATA1.shape[0]
+if SHAPE != 0:
+    logging.info('Weather data for day before yesterday imported')
+    pass
+else:
+    logging.info("Weather data for day before yesterday not available")
 
 
+# appending Historical data of both days together
+DF_HIST = HIST_DATA.append(HIST_DATA1)
+DF_HIST.reset_index(drop=True, inplace=True)
+SHAPE = DF_HIST.shape[0]
+if SHAPE != 0:
+    pass
+else:
+    logging.info("Historical weather data not present")
 
-print("Libraries and functions loaded")
+# appending forecast data of both days together
+NEW_DATA2 = NEW_DATA2.append(TODAY_DATA)
+DF_FORC = NEW_DATA.append(NEW_DATA2)
+DF_FORC.reset_index(drop=True, inplace=True)
+logging.info('Weather data appended')
+SHAPE = DF_FORC.shape[0]
+if SHAPE != 0:
+    pass
+else:
+    raise Exception("Forecast weather data not available")
 
+# correcting names of Marker locations
+for i in range(len(DF_HIST)):
+    DF_HIST['Location'][i] = DF_HIST['Location'][i].replace('IPL_', '')
+    DF_HIST['Location'][i] = re.sub(r"([0-9]+(\.[0-9]+)?)",r" \1 ", DF_HIST['Location'][i]).strip()
+for i in range(len(DF_FORC)):
+    DF_FORC['Location'][i] = DF_FORC['Location'][i].replace('IPL_', '')
+    DF_FORC['Location'][i] = re.sub(r"([0-9]+(\.[0-9]+)?)",r" \1 ", DF_FORC['Location'][i]).strip()    
+DF_HIST = DF_HIST.drop(['Job_Update_Time', 'timestampInit'], axis=1)
+DF_FORC = DF_FORC.drop(['Job_Update_Time', 'timestampInit'], axis=1)
 
+# renaming columns
+DF_HIST.rename(columns = {'Latitude':'latitude', 'Longitude' : 'longitude'}, inplace = True)
+DF_FORC.rename(columns = {'Latitude':'latitude', 'Longitude' : 'longitude'}, inplace = True)
+DF_HIST = DF_HIST.loc[:, ~DF_HIST.columns.str.contains('^Unnamed')]
+DF_FORC = DF_FORC.loc[:, ~DF_FORC.columns.str.contains('^Unnamed')]
 
+# breaking and saving the weather data according to days
 TODAY_DATE = datetime.now()
 FORECAST_NEXT_DATE = (TODAY_DATE + timedelta(days=1)).strftime('%Y-%m-%d')
 FORECAST_END_DATE = (TODAY_DATE + timedelta(days=2)).strftime('%Y-%m-%d')
@@ -134,70 +172,23 @@ PAST_START_DATE = (TODAY_DATE - timedelta(days=2)).strftime('%Y-%m-%d')
 PAST_END_DATE = (TODAY_DATE - timedelta(days=1)).strftime('%Y-%m-%d')
 TODAY_DATE = TODAY_DATE.strftime('%Y-%m-%d')
 
-print("Running for today's date", TODAY_DATE)
-print("Extracting from API")
-WAETHERSOURCEFILES_FORECAST = []
-WAETHERSOURCEFILES_HISTORICAL = []
-WEATHERSOURCE = []
-VALUE1 = 0.0
-VALUE2 = 0.0
-for i in LOCATION_MARKER:
-    VALUE1 = SITES_LATITUDE.get(i)
-    VALUE2 = SITES_LONGITUDE.get(i)
-    waethersource_data_forecast = ws_forecast_data(start=TODAY_DATE, end=FORECAST_END_DATE,
-                                                   lat=VALUE1, long=VALUE2, period='day')
-    waethersource_data_historical = ws_historical_data(start=PAST_START_DATE, end=PAST_END_DATE,
-                                                       lat=VALUE1, long=VALUE2, period='day')
-    waethersource_data_historical['Location'] = i
-    waethersource_data_forecast['Location'] = i
-    WAETHERSOURCEFILES_FORECAST.append(waethersource_data_forecast)
-    WAETHERSOURCEFILES_HISTORICAL.append(waethersource_data_historical)
-
-WAETHERSOURCE_DF_HIS = pd.concat(WAETHERSOURCEFILES_HISTORICAL)
-WAETHERSOURCE_DF_FOR = pd.concat(WAETHERSOURCEFILES_FORECAST)
-
-WAETHERSOURCE_DF_HIS.reset_index(drop=True, inplace=True)
-WAETHERSOURCE_DF_FOR.reset_index(drop=True, inplace=True)
-print("successful extraction")
-
-print(WAETHERSOURCE_DF_HIS.timestamp.unique())
-print(WAETHERSOURCE_DF_FOR['timestamp'].unique())
-
-WAETHERSOURCE_DF_HIS['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_HIS['timestamp'])
-WAETHERSOURCE_DF_FOR['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_FOR['timestamp'])
-
-WAETHERSOURCE_DF_HIS['timestamp'] = (WAETHERSOURCE_DF_HIS['timestamp']).apply(
-    lambda row: row.strftime("%Y-%m-%d %H:%M:%S"))
-
-WAETHERSOURCE_DF_FOR['timestamp'] = (WAETHERSOURCE_DF_FOR['timestamp']).apply(
-    lambda row: row.strftime("%Y-%m-%d %H:%M:%S"))
-
-WAETHERSOURCE_DF_HIS['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_HIS['timestamp']).dt.date
-WAETHERSOURCE_DF_FOR['timestamp'] = pd.to_datetime(WAETHERSOURCE_DF_FOR['timestamp']).dt.date
-
+# Creating a list of days for naming the output files
 DATE_LIST = [PAST_START_DATE, PAST_END_DATE, TODAY_DATE, FORECAST_NEXT_DATE, FORECAST_END_DATE]
+DAY_LIST = ['DAY_B_YDAY', 'YDAY', 'TODAY', 'TOM', 'DAY_A_TOM' ]
 
-
-
-
+# writing the weather data for day before yesterday and yesterday
+DF_HIST['timestamp'] = DF_HIST['timestamp'].dt.date
+DF_FORC['timestamp'] = DF_FORC['timestamp'].dt.date
+logging.info('The location of weather files are :')
 for i in range(0, 2):
-    temp_df = WAETHERSOURCE_DF_HIS[WAETHERSOURCE_DF_HIS['timestamp'].astype(str) == DATE_LIST[i]]
-    loc = "gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/"
-    loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[:4] + "-" +\
-    datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[4:6]
-    loc = loc + "/actual_data/weathersource_daily_"
-    loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d') +'.csv'
-    temp_df.to_csv(loc)
+    temp_df = DF_HIST[DF_HIST['timestamp'].astype(str) == DATE_LIST[i]]
+    loc = HIST_OP + '_' + DAY_LIST[i] + '.csv'
+    temp_df.to_csv(loc, mode = 'w', index=False)
+    logging.info(loc)
 
-
+# writing the weather data for today, tomorrow and day after tomorrow
 for i in range(2, 5):
-    temp_df = WAETHERSOURCE_DF_FOR[WAETHERSOURCE_DF_FOR['timestamp'].astype(str) == DATE_LIST[i]]
-    loc = "gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/"
-    loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[:4] + "-"\
-    + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d')[4:6]
-    loc = loc + "/forecast_data/" + TODAY_DATE + "/weathersource_daily_"
-    loc = loc + datetime.strptime(DATE_LIST[i], '%Y-%m-%d').strftime('%Y%m%d') + '.csv'
-    temp_df.to_csv(loc)
-
-
-print("Saved location at aes-datahub-0001-raw/Weather/weather_source/usa/Indianapolis/")
+    temp_df = DF_FORC[DF_FORC['timestamp'].astype(str) == DATE_LIST[i]]
+    loc = FORC_OP + '_' + DAY_LIST[i] + '.csv'
+    temp_df.to_csv(loc, mode = 'w', index=False)
+    logging.info(loc)

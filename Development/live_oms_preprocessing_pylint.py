@@ -1,6 +1,6 @@
 '''
 Author - Mu Sigma
-Updated: 09 Dec 2020
+Updated: 16 Dec 2020
 Version: 2
 Tasks - This code is used to take live data from OMS (Outage Manament System)
 And clean, filter, add different features & create analytical dataset
@@ -38,7 +38,7 @@ logger.setLevel(logging.INFO)
 
 # read config file
 CONFIGPARSER = ConfigParser(interpolation=ExtendedInterpolation())
-CONFIGPARSER.read('confignew0001.ini')
+CONFIGPARSER.read('config_ETR.ini')
 logging.info('Config File Loaded')
 logging.info('Config File Sections %s', CONFIGPARSER.sections())
 
@@ -83,19 +83,25 @@ logging.info('LIVE LOCATION TABLES: %s \n', _MATCHING_LIVE_LOCATION)
 
 
 ## **Read Live Files in Buckets**
-RAW_BUCKET_LOCATION = CONFIGPARSER['SETTINGS']['RAW_BUCKET_LOCATION']
+try:
+    RAW_BUCKET_LOCATION = CONFIGPARSER['SETTINGS']['RAW_BUCKET_LOCATION']
+except:
+    raise Exception('Config file not loaded')
 logging.info('Raw Bucket Location %s \n', RAW_BUCKET_LOCATION)
 logging.info('Todays Date %s \n,', CURRENT_DATE)
 
-LIVE_INCIDENT_DEVICE = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION,
-                                   _MATCHING_LIVE_INCIDENT_DEVICE[-1]))
-logging.info('Live LIVE_INCIDENT_DEVICE_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT_DEVICE[-1]))
+try:
+    LIVE_INCIDENT_DEVICE = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION,
+                                       _MATCHING_LIVE_INCIDENT_DEVICE[-1]))
+    logging.info('Live LIVE_INCIDENT_DEVICE_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT_DEVICE[-1]))
 
-LIVE_INCIDENT = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]))
-logging.info('Live LIVE_INCIDENT_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]))
+    LIVE_INCIDENT = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]))
+    logging.info('Live LIVE_INCIDENT_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]))
 
-LIVE_LOCATION = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_LOCATION[-1]))
-logging.info('Live LIVE_LOCATION_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_LOCATION[-1]))
+    LIVE_LOCATION = pd.read_csv(os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_LOCATION[-1]))
+    logging.info('Live LIVE_LOCATION_PATH: %s \n', os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_LOCATION[-1]))
+except:
+    raise Exception('Raw files not loaded')
 
 FILE_READ_LIST = [os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT_DEVICE[-1]),
                   os.path.join(RAW_BUCKET_LOCATION, _MATCHING_LIVE_INCIDENT[-1]),
@@ -329,9 +335,12 @@ QC_CHECK_SHAPE_AND_COLUMNS(DF_TREATED)
 
 ## **Cause, Clue, Occurn Mapping**
 # cause, occurn, clue mapping files
-CLUEMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['CLUE_MAPPING_CSV'])
-OCCURNMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['OCCURN_MAPPING_CSV'])
-CAUSEMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['CAUSEMAPPING_CSV'])
+try:
+    CLUEMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['CLUE_MAPPING_CSV'])
+    OCCURNMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['OCCURN_MAPPING_CSV'])
+    CAUSEMAPPING = pd.read_csv(CONFIGPARSER['LIVE_OMS']['CAUSEMAPPING_CSV'])
+except:
+    raise Exception('Clue, Occurn, CauseMapping files not found')
 
 DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENTDEVICELOCATION_, CLUEMAPPING, on=['CLUE_CD'], how='left')
 DF_INCIDENTDEVICELOCATION_ = pd.merge(DF_INCIDENTDEVICELOCATION_, OCCURNMAPPING, on=['OCCURN_CD'], how='left')
@@ -575,7 +584,10 @@ DF_ADS[LIST_COLUMNS] = DF_ADS[LIST_COLUMNS].apply(pd.to_numeric, errors='coerce'
 DF_ADS['LAT'] = DF_ADS['LAT'].ffill()
 DF_ADS['LONG'] = DF_ADS['LONG'].ffill()
 
-MARKER_LOCATION_CSV = pd.read_csv(CONFIGPARSER['LIVE_OMS']['MARKER_LOCATION_CSV'])
+try:
+    MARKER_LOCATION_CSV = pd.read_csv(CONFIGPARSER['LIVE_OMS']['MARKER_LOCATION_CSV'])
+except:
+    raise Exception('Marker Location CSV not found')
 
 MARKER_LOCATION_CSV = MARKER_LOCATION_CSV.loc[:, ~MARKER_LOCATION_CSV.columns.str.contains('^Unnamed')]
 MARKER_LOCATION_CSV = MARKER_LOCATION_CSV.loc[:, ~MARKER_LOCATION_CSV.columns.str.contains('_c0')]

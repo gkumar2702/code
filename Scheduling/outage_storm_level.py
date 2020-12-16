@@ -1,52 +1,61 @@
-"""
-Dag to predict the number of outages, number of customers, storm recovery and storm duration
-"""
+'''
+Author - Mu Sigma
+Updated: 15 Dec 2020
+Version: 2
+Tasks: PCA calculation, Number of Outages, Outage Duration, 
+Customer Quantity, Recovery Duration, Output Collation
+Schedule: At the end of every day
+Description: Dag to predict the number of outages, number of customers,
+storm recovery and storm duration
+Environment: Composer-0001
+Run-time environments: Pyspark,SparkR and python 3.7 callable
+'''
 
+# standard library imports
 import datetime
+
+# third party imports
 from airflow.models import Variable
 from airflow.contrib.operators.dataproc_operator import (
     DataProcPySparkOperator)
 from airflow.models import DAG
 from airflow.utils.trigger_rule import TriggerRule
 from airflow import AirflowException
-#from tempfile import NamedTemporaryFile
-#from typing import Optional, Union
 from airflow.operators.bash_operator  import BashOperator
-#from airflow.utils.decorators import apply_defaults
-#from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
-#from airflow.contrib.operators.bigquery_operator import BigQueryOperator
-#from airflow.operators.dagrun_operator  import TriggerDagRunOperator
-#from airflow.contrib.operators import bigquery_to_gcs
 
 # ===================Variables=================================
 ENV = Variable.get("env")
-print(ENV)
+# name of the job performed in airflow
 JOB_NAME = 'outage_storm_level'
-PROJECT = 'aes-datahub-'+ENV
+# name of the composer to be used
 COMPOSER_NAME = 'composer-'+ENV
-BUCKET = 'aes-datahub-0001-curated'
-COMPOSER_BUCKET = 'us-east4-composer-0001-40ca8a74-bucket'
-DATAPROC_BUCKET = 'aes-datahub-0001-temp'
-RAW_BUCKET = 'aes-datahub-'+ENV+ '-raw'
-CURATED_BUCKET = 'aes-datahub-'+ENV+'-curated'
-CLUSTER_NAME = 'dp-outage-python-0001'
-BQ_PROJECT = "aes-analytics-0001"
-BQ_DATASET = "mds_outage_restoration"
-BQ_TABLE_CHVG = "IPL_Live_Input_Master_Dataset"
-BQ_TABLE_FINAL = "IPL_LIVE_PREDICTIONS"
-BQ_TABLE_REPO = "IPL_PREDICTIONS"
-CLUSTER_NAME_R = 'dp-outage-r-0001'
+# name of the python cluster being used
+CLUSTER_NAME_PYTHON = 'dp-outage-python-0001'
 
+# location of the python scripts
+SCRIPT_LOC_PY = 'gs://us-east4-composer-0001-40ca8a74-bucket/data'\
+                '/Outage_restoration/IPL/Python_scripts/'
+# location of the R scripts
+SCRIPT_LOC_BASH_R = "gcloud beta dataproc jobs submit spark-r    "\
+                    "/home/airflow/gcs/data/Outage_restoration/IPL/R_scripts/"
+# name of R cluster
+SCRIPT_LOC_BASH_CLUSTER = " --cluster=dp-outage-r-0001 --region=us-east4"
+# specify location of the config file
+CONFIG_FILE = 'gs://us-east4-composer-0001-40ca8a74-bucket/data/'\
+              'Outage_restoration/IPL/Config_Files/config_storm.ini'
+              
 YESTERDAY = datetime.datetime.combine(
     datetime.datetime.today() - datetime.timedelta(1),
     datetime.datetime.min.time())
+
 
 # =================== DAG Arguments =================================
 DEFAULT_ARGS = {
     'start_date': YESTERDAY,
     'email_on_failure': True,
     'email': ['ms.gkumar.c@aes.com', 'musigma.bkumar.c@aes.com',
-              'eric.nussbaumer@aes.com', 'musigma.dchauhan.c@aes.com'],
+              'musigma.dchauhan.c@aes.com', 'musigma.skumar.c@aes.com',
+              'musigma.aaggarwal.c@aes.com'],
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': datetime.timedelta(minutes=1),
@@ -65,62 +74,48 @@ with DAG(
         ) as dag_def:
 
     PCA = DataProcPySparkOperator(
-        task_id='PCA_calcualtion',
-        main='gs://us-east4-composer-0001-40ca8a74-bucket/data'\
-            '/Outage_restoration/IPL/Python_scripts/pca_storm_level.py',
-        arguments=None,
-        archives=None,
-        pyfiles=None,
-        files=None,
-        cluster_name='dp-outage-python-0001',
-        dataproc_pyspark_properties=None,
-        dataproc_pyspark_jars=None,
-        gcp_conn_id='google_cloud_default',
-        delegate_to=None,
+        task_id='PCA_calculation',
+        main=SCRIPT_LOC_PY+'pca_storm_level_pylint.py',
+        cluster_name=CLUSTER_NAME_PYTHON,
         region='us-east4',
         job_error_states=['ERROR'],
-        dag=dag_def)
+        gcp_conn_id='google_cloud_default',
+        files=CONFIG_FILE,
+        dag=dag_def,
+        dataproc_pyspark_properties=None,
+        dataproc_pyspark_jars=None,
+        delegate_to=None,
+        arguments=None,
+        archives=None,
+        pyfiles=None)
 
     NUMBER_OF_OUTAGES = BashOperator(
         task_id='NUMBER_OF_OUTAGES',
-        bash_command="gcloud beta dataproc jobs submit spark-r    "
-                     "/home/airflow/gcs/data/Outage_restoration/IPL/R_scripts/"\
-                     "Number_of_Outages_script.R  "\
-                     "--cluster=dp-outage-r-0001 --region=us-east4", dag=dag_def)
-    OUTAGE_DURATION = BashOperator(
-        task_id='OUTAGE_DURATION',
-        bash_command="gcloud beta dataproc jobs submit spark-r    "\
-                     "/home/airflow/gcs/data/Outage_restoration/IPL/R_scripts/Duration_script.R  "\
-                     "--cluster=dp-outage-r-0001 --region=us-east4", dag=dag_def)
+        bash_command=SCRIPT_LOC_BASH_R+
+                     "Number_of_Outages_script.R  "+
+                     SCRIPT_LOC_BASH_CLUSTER, dag=dag_def)
     CUST_QTY = BashOperator(
         task_id='CUST_QTY',
-        bash_command="gcloud beta dataproc jobs submit spark-r    "\
-                   "/home/airflow/gcs/data/Outage_restoration/IPL/R_scripts/Cust_Qty.R  "\
-                   "--cluster=dp-outage-r-0001 --region=us-east4", dag=dag_def)
-    RECOVERY_DURATION = BashOperator(
-        task_id='RECOVERY_DURATION',
-        bash_command="gcloud beta dataproc jobs submit spark-r    "\
-		           "/home/airflow/gcs/data/Outage_restoration/IPL/R_scripts/Recovery_Duration.R  "\
-                   "--cluster=dp-outage-r-0001 --region=us-east4", dag=dag_def)
+        bash_command=SCRIPT_LOC_BASH_R+"Cust_Qty.R  "+
+                     SCRIPT_LOC_BASH_CLUSTER, dag=dag_def)
 
     OUTPUT_COLLATION = DataProcPySparkOperator(
         task_id='OUTPUT_COLLATION',
-        main='gs://us-east4-composer-0001-40ca8a74-bucket'\
-            '/data/Outage_restoration/IPL/Python_scripts/output_collation_pylint.py',
-        arguments=None,
-        archives=None,
-        pyfiles=None,
-        files=None,
-        cluster_name='dp-outage-python-0001',
-        dataproc_pyspark_properties=None,
-        dataproc_pyspark_jars=None,
+        main=SCRIPT_LOC_PY+'output_collation_pylint.py',
+        cluster_name=CLUSTER_NAME_PYTHON,
         gcp_conn_id='google_cloud_default',
-        delegate_to=None,
         region='us-east4',
         job_error_states=['ERROR'],
-        dag=dag_def)
+        dag=dag_def,
+        files=CONFIG_FILE,
+        dataproc_pyspark_properties=None,
+        dataproc_pyspark_jars=None,
+        delegate_to=None,
+        arguments=None,
+        archives=None,
+        pyfiles=None)
 
 # Create pipeline
-[OUTAGE_DURATION, PCA, CUST_QTY, RECOVERY_DURATION]
+[PCA, CUST_QTY]
 PCA >> NUMBER_OF_OUTAGES
 NUMBER_OF_OUTAGES >> OUTPUT_COLLATION

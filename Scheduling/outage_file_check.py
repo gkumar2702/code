@@ -1,41 +1,50 @@
-"""
-DAG
-"""
+'''
+Author - Mu Sigma
+Updated: 15 Dec 2020
+Version: 2
+Tasks: Check for the last file in the OMS data bucket
+Schedule: Every 2 hours
+Environment: Composer-0001
+Run-time environments: Pyspark,SparkR and python 3.7 callable
+'''
+
+# standard library imports 
 import datetime
+
+# third party imports 
 from airflow.models import Variable
 from airflow.contrib.operators.dataproc_operator import (DataProcPySparkOperator)
 from airflow.models import DAG
-from airflow import models
-from airflow import AirflowException
 
 # ===================Variables=================================
 ENV = Variable.get("env")
-print(ENV)
+# name of the job performed in airflow
 JOB_NAME = 'outage_IPL_ingestion_status'
-PROJECT = 'aes-datahub-'+ENV
+# name of the composer to be used
 COMPOSER_NAME = 'composer-'+ENV
-BUCKET = 'aes-analytics-0001-curated'
-COMPOSER_BUCKET = 'us-east4-composer-0001-40ca8a74-bucket'
-DATAPROC_BUCKET = 'aes-datahub-0001-temp'
-RAW_BUCKET = 'aes-datahub-'+ENV+'-raw'
+# name of the python clsuter being used
 CLUSTER_NAME = 'dp-outage-python-0001'
-CLUSTER_NAME_R = 'outage-r-cluster-0001'
-EMAIL = ['musigma.bkumar.c@aes.com']
+# location of the scripts
+SCRIPT_LOC = 'gs://us-east4-composer-0001-40ca8a74-bucket/data/'\
+             'Outage_restoration/IPL/Python_scripts/'
+# specify location of the config file
+CONFIG_FILE = 'gs://us-east4-composer-0001-40ca8a74-bucket/data/'\
+              'Outage_restoration/IPL/Config_Files/config_ETR.ini'
 
 OUTPUT_DATE = datetime.datetime.now().strftime("%Y%m%d")
 
-
+# setting up start time 
 YESTERDAY = datetime.datetime.combine(
     datetime.datetime.today() - datetime.timedelta(1),
     datetime.datetime.min.time())
-START_TIME = datetime.datetime(2020, 10, 23, 9, 00, 00)
+START_TIME = datetime.datetime(2020, 12, 15, 12, 10, 00)
 
 # =================== DAG Arguments =================================
 DEFAULT_ARGS = {
     'start_date': START_TIME,
     'email_on_failure': True,
     'email': ['ms.gkumar.c@aes.com', 'musigma.bkumar.c@aes.com', 'musigma.aaggarwal.c@aes.'\
-              'com', 'musigma.dchauhan.c@aes.com'],
+              'com', 'musigma.dchauhan.c@aes.com', 'musigma.skumar.c@aes.com'],
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': datetime.timedelta(minutes=1),
@@ -53,20 +62,19 @@ with DAG(
         schedule_interval='0 */2 * * *'
 ) as dag:
     FILE_CHECK = DataProcPySparkOperator(task_id='OMS_Ingestion_Status_Check',
-                                         main='gs://us-east4-composer-0001-40ca8a74-bucket/data/Ou'\
- 										     'tage_restoration/IPL/Python_scripts/oms_filechecker.py',
-                                         arguments=None,
-                                         archives=None,
-                                         pyfiles=None,
-                                         files=None,
-                                         cluster_name='dp-outage-python-0001',
-                                         dataproc_pyspark_properties=None,
-                                         dataproc_pyspark_jars=None,
+                                         main=SCRIPT_LOC+'oms_filechecker.py',
+                                         cluster_name=CLUSTER_NAME,
                                          gcp_conn_id='google_cloud_default',
-                                         delegate_to=None,
                                          region='us-east4',
                                          job_error_states=['ERROR'],
-                                         dag=dag)
+                                         dag=dag,
+                                         files=CONFIG_FILE,
+                                         dataproc_pyspark_properties=None,
+                                         dataproc_pyspark_jars=None,
+                                         delegate_to=None,
+                                         arguments=None,
+                                         archives=None,
+                                         pyfiles=None)
 
 # Create pipeline
 FILE_CHECK

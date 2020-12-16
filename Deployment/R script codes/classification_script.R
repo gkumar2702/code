@@ -17,11 +17,11 @@ year_month_2 <- format(as.Date(Sys.time(),format="%Y%m%d")+2,"%Y-%m")
 
 system('gsutil cp gs://aes-analytics-0001-curated/Outage_Restoration/Model_object/model_RF_2020-08-20-15-25-54.RDS /root/')
 ##Read the Required Forecasted weather File
-Weather_data <- read.df(paste0("gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/",year_month_1,"/forecast_data/",today,"/weathersource_daily_",tomorrow,".csv"),source = "csv", header="true",inferschema="true")
+Weather_data <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Weather_live_IPL/Weather_forecast_daily_TOM.csv"),source = "csv", header="true",inferschema="true")
 Weather_data <- SparkR :: collect(Weather_data)
 Weather_data <- na.omit(Weather_data)
 
-Weather_data1 <- read.df(paste0("gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/",year_month_2,"/forecast_data/",today,"/weathersource_daily_",day_after,".csv"),source = "csv", header="true",inferschema="true")
+Weather_data1 <- read.df(paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Weather_live_IPL/Weather_forecast_daily_DAY_A_TOM.csv"),source = "csv", header="true",inferschema="true")
 Weather_data1 <- SparkR :: collect(Weather_data1)
 Weather_data1 <- na.omit(Weather_data1)
 

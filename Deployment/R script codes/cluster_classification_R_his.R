@@ -10,7 +10,7 @@ system('gsutil cp gs://aes-analytics-0001-curated/Outage_Restoration/Model_objec
 date<-format(Sys.Date(),"%Y-%m-%d")
 date2<-format(Sys.Date()-1,"%Y%m%d")
 month<-format(Sys.Date()-1,"%Y-%m")
-input_filename<-paste0("gs://aes-datahub-0001-raw/Weather/weather_source/USA/Indianapolis/",month,"/actual_data/weathersource_daily_",date2,".csv",sep="")
+input_filename<-paste0("gs://aes-analytics-0001-curated/Outage_Restoration/OMS/Weather_live_IPL/Weather_hist_daily_YDAY.csv")
 
 weather_data_raw_df <- read.df(input_filename, source = "csv", header="true",inferschema="true")
 weather_data_raw <- SparkR :: collect(weather_data_raw_df)
