@@ -24,7 +24,11 @@ Across all model levels, training was done on actual data (actual weather variab
 ![Architecture diagram](https://gitlab.com/aes-digital/musigma/outage-restoration/-/raw/master/Project%20Details/Architecture_end_end.jpg?raw=true)
 
 ### Configuration file
-config0002new.ini is the file used for saving the configurations of all the scripts that run in the ETR pipeline.
+- We have 2 config files 
+        - config_ETR.ini
+        - config_storm.ini
+### config_ETR.ini       
+config_ETR.ini is the file used for saving the configurations of all the scripts that run in the ETR pipeline.
 Each section in the configuration file point to a python script as below:
 ##### Settings:
 project_id – Name of the Project<br>
@@ -63,8 +67,72 @@ model_location – Path of the model <br>
 model_features – Path to read CSV containing features to be used in the model<br>
 prediction_live - Path to write the live predictions as CSV<br>
 prediction_backup – Path to write a backup of live predictions<br>
-	
+#### Settings Diagnostic View
+bucket_name_raw = Folder of raw data files<br>
+bucket_name = Name of folder of raw data files<br>
+prefix = Prefix for Diagnostic file path<br>
+project_id = Project ID <br>
+op_bq_schema = Output Bigquery Schema<br>
+op_bq_tab = Output Bigquery table<br>
+#### Diagnostic View 
+numerical_cols = Numerical columns in the dataset<br>
+numerical_cols_etr = Numerical columns including <br>
+df_pred = Bigquery table to read the predictions<br>
+df_diag = Bigquery table to read diagnostic data <br>
+occurn_remov = Occurances to be removed from the dataset<br>
+#### Storm level comparison
+op_bq_schema = Output bigquery schema<br>
+op_bq_tab = Output bigquery table<br>
+df_pred = Query to read predictions from Bigquery table<br>
+#### File Check settings
+bucket_name_raw = Raw bucket name<br>
+prefix = Prefix to read the files from<br>
+bucket_name = Location of raw bucket<br>
+#### File check paths
+last_file_read_path = Location of last file read<br>
+current_file_read_path = Location of current path<br>
 
+#### config_storm.ini
+config_storm.ini is the file used for saving the configurations of all the scripts that run in the Storm level pipeline.
+Each section in the configuration file point to a python script as below:
+#### Storm settings
+project_id = Project ID 
+raw_bucket_name = Name of the raw bucket
+raw_bucket_location = Location of the raw bucket
+curated_bucket_name = Name of curated dataset
+curated_bucket_location = Location of curated dataset
+bq_curated_dataset = Bigquery curated dataset table 
+bq_ipl_live_predictions = Live BQ table for IPL Predictions
+bq_ipl_predictions = BQ table for historical IPL Predictions
+#### PCA Calculation
+weather_query = Query to read weather data from Bigquery table
+weather_query_2 = Query to read weather data from Bigquery table
+storm_id_level_data = Location for reading storm ID level
+pca_output_path = Location for saving PCA output
+PROJECT_ID = Project ID for accessing BQ tables
+#### Output Collation
+OP_PATH = Location to read the output files from
+OP_BQ_SCHEMA = BQ schema name for saving output
+OP_BQ_TAB = BQ table to save output
+PROJECT_ID = Project ID for accessing BQ tables
+#### Settings for Weather daily
+PROJECT_ID = Project ID for accessing BQ tables
+HIST_OP = Location for saving historical weather forecasts
+FORC_OP = Location to save Forecasts daily
+WS_LOCATION = Query to read weather data from BQ tables
+#### Forecast email alert
+power_utility = Division of Power utility
+project_id = Project ID for accessing BQ tables
+dataset_preparedness = BQ Schema 
+table_preparedness = Bigquery table
+forecast_type = One day ahead or two day ahead
+forecast_level_column = Number_of_days_ahead
+dataset_weather = Weather source schema 
+table_weather_daily = Table name for reading weather data 
+landmark_mapping = Location to read Lanmark Mapping CSV
+email_recipients = Email IDs which will receive the email alert
+email_from = Email ID from which the mail will be sent
+smtp_server = Server address for sending the mail
 
 
 
