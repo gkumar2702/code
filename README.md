@@ -93,46 +93,46 @@ last_file_read_path = Location of last file read<br>
 current_file_read_path = Location of current path<br>
 
 #### config_storm.ini
-config_storm.ini is the file used for saving the configurations of all the scripts that run in the Storm level pipeline.
-Each section in the configuration file point to a python script as below:
+config_storm.ini is the file used for saving the configurations of all the scripts that run in the Storm level pipeline.<br>
+Each section in the configuration file point to a python script as below:<br>
 #### Storm settings
-project_id = Project ID 
-raw_bucket_name = Name of the raw bucket
-raw_bucket_location = Location of the raw bucket
-curated_bucket_name = Name of curated dataset
-curated_bucket_location = Location of curated dataset
-bq_curated_dataset = Bigquery curated dataset table 
-bq_ipl_live_predictions = Live BQ table for IPL Predictions
-bq_ipl_predictions = BQ table for historical IPL Predictions
+project_id = Project ID to access BQ tables <br>
+raw_bucket_name = Name of the raw bucket<br>
+raw_bucket_location = Location of the raw bucket<br>
+curated_bucket_name = Name of curated dataset<br>
+curated_bucket_location = Location of curated dataset<br>
+bq_curated_dataset = Bigquery curated dataset table <br>
+bq_ipl_live_predictions = Live BQ table for IPL Predictions<br>
+bq_ipl_predictions = BQ table for historical IPL Predictions<br>
 #### PCA Calculation
-weather_query = Query to read weather data from Bigquery table
-weather_query_2 = Query to read weather data from Bigquery table
-storm_id_level_data = Location for reading storm ID level
-pca_output_path = Location for saving PCA output
-PROJECT_ID = Project ID for accessing BQ tables
+weather_query = Query to read weather data from Bigquery table<br>
+weather_query_2 = Query to read weather data from Bigquery table<br>
+storm_id_level_data = Location for reading storm ID level<br>
+pca_output_path = Location for saving PCA output<br>
+PROJECT_ID = Project ID for accessing BQ tables<br>
 #### Output Collation
-OP_PATH = Location to read the output files from
-OP_BQ_SCHEMA = BQ schema name for saving output
-OP_BQ_TAB = BQ table to save output
-PROJECT_ID = Project ID for accessing BQ tables
+OP_PATH = Location to read the output files from<br>
+OP_BQ_SCHEMA = BQ schema name for saving output<br>
+OP_BQ_TAB = BQ table to save output<br>
+PROJECT_ID = Project ID for accessing BQ tables<br>
 #### Settings for Weather daily
-PROJECT_ID = Project ID for accessing BQ tables
-HIST_OP = Location for saving historical weather forecasts
-FORC_OP = Location to save Forecasts daily
-WS_LOCATION = Query to read weather data from BQ tables
+PROJECT_ID = Project ID for accessing BQ tables<br>
+HIST_OP = Location for saving historical weather forecasts<br>
+FORC_OP = Location to save Forecasts daily<br>
+WS_LOCATION = Query to read weather data from BQ tables<br>
 #### Forecast email alert
-power_utility = Division of Power utility
-project_id = Project ID for accessing BQ tables
-dataset_preparedness = BQ Schema 
-table_preparedness = Bigquery table
-forecast_type = One day ahead or two day ahead
-forecast_level_column = Number_of_days_ahead
-dataset_weather = Weather source schema 
-table_weather_daily = Table name for reading weather data 
-landmark_mapping = Location to read Lanmark Mapping CSV
-email_recipients = Email IDs which will receive the email alert
-email_from = Email ID from which the mail will be sent
-smtp_server = Server address for sending the mail
+power_utility = Division of Power utility<br>
+project_id = Project ID for accessing BQ tables<br>
+dataset_preparedness = BQ Schema <br>
+table_preparedness = Bigquery table<br>
+forecast_type = One day ahead or two day ahead<br>
+forecast_level_column = Number_of_days_ahead<br>
+dataset_weather = Weather source schema <br>
+table_weather_daily = Table name for reading weather data <br>
+landmark_mapping = Location to read Lanmark Mapping CSV<br>
+email_recipients = Email IDs which will receive the email alert<br>
+email_from = Email ID from which the mail will be sent<br>
+smtp_server = Server address for sending the mail<br>
 
 
 
