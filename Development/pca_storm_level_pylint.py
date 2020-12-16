@@ -64,7 +64,7 @@ except:
     raise Exception("Failed to load data for tomorrow")
 NEW_DATA.drop_duplicates(['timestamp', 'Location'], keep='last', inplace=True)
 NEW_DATA.reset_index(drop=True, inplace=True)
-logging.info('Check shape of the new data %s \n, NEW_DATA.shape)
+logging.info('Check shape of the new data %s \n', NEW_DATA.shape)
 
 # Reading weather data for day after tomorrow
 try:
