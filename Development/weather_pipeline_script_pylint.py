@@ -37,6 +37,7 @@ logging.info('Config File Sections %s', CONFIGPARSER.sections())
 # Fetching hourly weather data for 3 days
 DF_WEATHER = CONFIGPARSER['WEATHER_PIPELINE']['WEATHER_DATA_FETCH_QUERY']
 DF_WEATHER = gbq.read_gbq(DF_WEATHER, project_id=CONFIGPARSER['WEATHER_PIPELINE']['PROJECT_ID'])
+DF_WEATHER.drop_duplicates(subset=['timestamp','Location'],keep='first',inplace=True)
 logging.info('BQ Table Loaded \n')
 logging.info('Shape of the weather data %s \n', DF_WEATHER.shape)
 
